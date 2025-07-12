@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: data_agent
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  api:
+    build: .
+    container_name: api
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/data_agent}
+      NODE_ENV: ${NODE_ENV:-development}
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  postgrest:
+    image: postgrest/postgrest
+    container_name: postgrest
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: ${PGRST_DB_URI:-postgresql://postgres:password@postgres:5432/data_agent}
+      PGRST_DB_SCHEMA: ${PGRST_DB_SCHEMA:-public}
+      PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE:-anon}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:-your-jwt-secret}
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge 
