@@ -19,7 +19,7 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **FastAPI**: API REST para endpoints + WebSocket/SSE para chat
 - **SQLAlchemy**: ORM para persistência de dados
 - **PostgreSQL**: Banco de dados principal (via Docker)
-- **OpenAI API**: LLM para extração de entidades e conversação
+- **OpenAI API**: LLM para conversação via requests HTTP (estável)
 - **Docker Compose**: Containerização completa
 
 ### **Interface e Orchestração**
@@ -285,10 +285,10 @@ services:
 ### **Variáveis Essenciais**
 ```bash
 # .env
-# OpenAI (obrigatório)
+# OpenAI (obrigatório para chat conversacional)
 OPENAI_API_KEY=sua_chave_aqui
 OPENAI_MODEL=gpt-4o-mini
-OPENAI_MAX_TOKENS=1500
+OPENAI_MAX_TOKENS=500
 
 # Database
 DB_PASSWORD=secure_password_here
@@ -331,10 +331,10 @@ docker-compose up -d
 
 ### **Teste de Funcionalidade**
 ```bash
-# Teste direto da API de chat
+# Teste chat conversacional
 curl -X POST "http://localhost:8000/chat/message" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Quero marcar consulta para João Silva, telefone 11999887766, amanhã às 10h"}'
+  -d '{"message": "Olá, como você está?"}'
 
 # Verificar dados estruturados criados
 curl "http://localhost:3000/consultas"
