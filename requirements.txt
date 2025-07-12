@@ -23,4 +23,7 @@ loguru==0.7.2
 python-dotenv==1.0.0
 
 # Cliente OpenAI para integração com GPT
-openai==1.51.0 
+# openai==1.3.8
+
+# Biblioteca para requisições HTTP
+requests==2.31.0 
