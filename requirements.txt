@@ -20,4 +20,7 @@ python-multipart==0.0.6
 loguru==0.7.2
 
 # Carregamento de variáveis de ambiente
-python-dotenv==1.0.0 
+python-dotenv==1.0.0
+
+# Cliente OpenAI para integração com GPT
+openai==1.51.0 
