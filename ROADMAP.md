@@ -6,18 +6,70 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## ✅ **ETAPA 1: FUNDAÇÃO CONVERSACIONAL - PLANEJADA**
+## 🎯 **ETAPA 1: FUNDAÇÃO CONVERSACIONAL - PLANEJADA**
 
-**Objetivo**: API básica de chat funcionando via Docker com resposta estruturada.
+**Objetivo**: API básica de chat funcionando via Docker com resposta estruturada, criando base sólida para evoluções futuras.
 
-**Capacidades Planejadas:**
-- Chat API básica com endpoints REST
-- Docker Compose funcionando
-- Health check e logging básico
-- Resposta estruturada em JSON
-- Configuração via environment variables
+### **Funcionalidade 1.1: Setup Docker Completo**
 
-**Resultado Esperado**: Sistema responde a mensagens via API, base sólida para evoluções futuras.
+**Critérios de Aceite:**
+- Deve executar `docker-compose up -d` sem erros
+- Deve manter todos os containers (postgres, api, postgrest) healthy
+- Deve mostrar logs limpos sem erros críticos de inicialização
+- Deve aceitar conexões PostgreSQL na porta 5432
+- Deve responder FastAPI na porta 8000 com status 200
+- Deve responder PostgREST na porta 3000 com status 200
+- Deve persistir dados após `docker-compose restart`
+
+**Experiência do Usuário - Funcionalidade 1.1**
+**Antes**: Sistema inexistente, necessidade de configuração manual complexa
+**Depois**: ✅ Desenvolvedor executa um comando e tem ambiente completo funcionando, pronto para receber requisições de chat
+
+### **Funcionalidade 1.2: API de Chat Básica**
+
+**Critérios de Aceite:**
+- Deve aceitar POST /chat/message com JSON {"message": "texto"}
+- Deve retornar resposta estruturada: {"response": "texto", "timestamp": "ISO", "session_id": "uuid"}
+- Deve validar entrada rejeitando mensagem vazia com HTTP 422
+- Deve funcionar com resposta estática (sem dependência OpenAI inicial)
+- Deve configurar headers CORS para requisições locais
+- Deve documentar endpoint automaticamente no /docs do FastAPI
+
+**Experiência do Usuário - Funcionalidade 1.2**
+**Antes**: Não existe interface para comunicação com sistema
+**Depois**: ✅ Usuário pode enviar mensagem via API e receber resposta estruturada, base para interface conversacional
+
+### **Funcionalidade 1.3: Health Check e Logging**
+
+**Critérios de Aceite:**
+- Deve fornecer GET /system/health com status de todos os serviços
+- Deve validar no health check: PostgreSQL conectado, FastAPI funcionando
+- Deve produzir logs estruturados (JSON) visíveis em `docker logs data-agent-api`
+- Deve logar cada requisição chat com timestamp, session_id, message_length
+- Deve suportar diferentes níveis de log (INFO, ERROR)
+- Deve proteger logs de informações sensíveis
+
+**Experiência do Usuário - Funcionalidade 1.3**
+**Antes**: Sistema sem observabilidade, impossível debuggar problemas
+**Depois**: ✅ Desenvolvedor tem visibilidade completa da saúde do sistema e pode rastrear todas as interações de chat
+
+### **Funcionalidade 1.4: Configuração via Environment**
+
+**Critérios de Aceite:**
+- Deve fornecer arquivo .env.example com todas as variáveis necessárias
+- Deve funcionar apenas com variáveis obrigatórias definidas
+- Deve permitir configuração de Database URL via DATABASE_URL
+- Deve permitir configuração de log level via LOG_LEVEL
+- Deve carregar configurações corretamente no container
+- Deve mostrar erro claro se variável obrigatória estiver ausente
+
+**Experiência do Usuário - Funcionalidade 1.4**
+**Antes**: Sistema com configuração hardcoded, impossível adaptar para diferentes ambientes
+**Depois**: ✅ Sistema configurável para desenvolvimento, teste e produção via variáveis de ambiente
+
+**Status ETAPA 1:** 🎯 **PLANEJADA** (0/4 funcionalidades implementadas)
+
+**Resultado Esperado**: Base sólida com API de chat funcional, ambiente Docker estável, logging estruturado e configuração flexível.
 
 ---
 
