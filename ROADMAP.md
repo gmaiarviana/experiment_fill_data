@@ -6,7 +6,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## 🎯 **ETAPA 1: FUNDAÇÃO CONVERSACIONAL - PLANEJADA**
+## 🎯 **ETAPA 1: FUNDAÇÃO CONVERSACIONAL - EM PROGRESSO**
 
 **Objetivo**: API básica de chat funcionando via Docker com resposta estruturada, criando base sólida para evoluções futuras.
 
@@ -22,19 +22,17 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - ✅ PostgREST API automática respondendo StatusCode 200
 - ✅ PostgreSQL persistindo dados via volumes
 
-### **Funcionalidade 1.2: API de Chat Básica**
+### **Funcionalidade 1.2: API de Chat Básica** ✅ **IMPLEMENTADO**
 
-**Critérios de Aceite:**
-- Deve aceitar POST /chat/message com JSON {"message": "texto"}
-- Deve retornar resposta estruturada: {"response": "texto", "timestamp": "ISO", "session_id": "uuid"}
-- Deve validar entrada rejeitando mensagem vazia com HTTP 422
-- Deve funcionar com resposta estática (sem dependência OpenAI inicial)
-- Deve configurar headers CORS para requisições locais
-- Deve documentar endpoint automaticamente no /docs do FastAPI
-
-**Experiência do Usuário - Funcionalidade 1.2**
-**Antes**: Não existe interface para comunicação com sistema
-**Depois**: ✅ Usuário pode enviar mensagem via API e receber resposta estruturada, base para interface conversacional
+**Implementação Concluída:**
+- ✅ Estrutura de pacotes Python (src/api/schemas/) funcionando
+- ✅ ChatRequest e ChatResponse com validação Pydantic
+- ✅ FastAPI app com CORS configurado para desenvolvimento
+- ✅ Endpoint POST /chat/message retornando resposta estruturada
+- ✅ Validação de entrada rejeitando mensagens vazias (HTTP 422)
+- ✅ Resposta fixa com timestamp ISO e session_id UUID
+- ✅ Documentação automática em /docs funcionando
+- ✅ Dockerfile copiando src/ corretamente para container
 
 ### **Funcionalidade 1.3: Health Check e Logging**
 
@@ -64,7 +62,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 **Antes**: Sistema com configuração hardcoded, impossível adaptar para diferentes ambientes
 **Depois**: ✅ Sistema configurável para desenvolvimento, teste e produção via variáveis de ambiente
 
-**Status ETAPA 1:** 🎯 **PLANEJADA** (0/4 funcionalidades implementadas)
+**Status ETAPA 1:** 🎯 **EM PROGRESSO** (2/4 funcionalidades implementadas)
 
 **Resultado Esperado**: Base sólida com API de chat funcional, ambiente Docker estável, logging estruturado e configuração flexível.
 
@@ -178,33 +176,3 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - API integration framework
 
 ---
-
-## 🏁 **Sistema Completo - Visão Final**
-
-Ao final das primeiras 6 etapas, teremos um **Data Structuring Agent** completo:
-
-### **Stack Técnica Consolidada:**
-- **Interface**: N8N workflows visuais
-- **Backend**: FastAPI + Python com reasoning
-- **IA**: OpenAI para extração + conversação
-- **Storage**: PostgreSQL + PostgREST
-- **Deploy**: Docker Compose completo
-- **Memory**: Context management durante sessões
-
-### **Experiência do Usuário Final:**
-```
-👤 Usuário: "Quero marcar consulta para João amanhã de manhã"
-🤖 Sistema: "Entendi! João para amanhã de manhã. Preciso do telefone e horário específico."
-👤 Usuário: "11999887766, pode ser 9h"
-🤖 Sistema: "✅ Consulta confirmada: João Silva, (11) 99988-7766, 16/01/2025 09:00"
-💾 Dados organizados e salvos automaticamente
-```
-
-### **Capacidades Principais:**
-- Conversação natural como WhatsApp
-- Extração inteligente de entidades
-- Reasoning para conduzir conversa
-- Memory durante sessão
-- Dados estruturados persistentes
-- Interface visual via N8N
-- Base sólida para extensões futuras
