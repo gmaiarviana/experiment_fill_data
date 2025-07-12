@@ -1,0 +1,23 @@
+# Web framework para APIs REST
+fastapi==0.104.1
+
+# ASGI server para produção e desenvolvimento
+uvicorn[standard]==0.24.0
+
+# ORM para banco de dados
+sqlalchemy==2.0.23
+
+# Driver PostgreSQL para Python
+psycopg2-binary==2.9.9
+
+# Validação de dados e serialização
+pydantic==2.5.0
+
+# Suporte para upload de arquivos multipart
+python-multipart==0.0.6
+
+# Logging estruturado e colorido
+loguru==0.7.2
+
+# Carregamento de variáveis de ambiente
+python-dotenv==1.0.0 
