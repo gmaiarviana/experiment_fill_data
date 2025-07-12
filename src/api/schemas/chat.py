@@ -5,7 +5,13 @@ from typing import Optional
 
 class ChatRequest(BaseModel):
     """Schema para requisições de chat"""
-    message: str = Field(..., min_length=1, description="Mensagem do usuário")
+    message: str = Field(
+        ..., 
+        min_length=1, 
+        max_length=1000, 
+        description="Mensagem não pode ser vazia",
+        example="Olá, preciso de ajuda"
+    )
 
 
 class ChatResponse(BaseModel):
