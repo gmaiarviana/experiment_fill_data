@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.schemas.chat import ChatRequest, ChatResponse
+from src.api.routers.system import router as system_router
 from src.core.openai_client import OpenAIClient
 from datetime import datetime
 import uuid
@@ -10,6 +11,11 @@ app = FastAPI(
     title="Data Structuring Agent",
     version="1.0.0"
 )
+
+print("✅ FastAPI app criada - main.py executando")
+
+# Include routers
+app.include_router(system_router)
 
 # Configure CORS middleware
 app.add_middleware(
