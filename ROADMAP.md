@@ -22,16 +22,18 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ## 🎯 **ETAPA 2: INTERFACE VISUAL N8N - PLANEJADA**
 
-**Objetivo**: Interface visual para conversação via workflows N8N.
+**Objetivo**: Interface visual para conversação via workflows N8N, mantendo FastAPI como backend.
 
-**Capacidades Planejadas:**
-- Workflow N8N de chat funcionando
-- Integração N8N → FastAPI → resposta visual
-- Interface para input de mensagens
-- Workflows exportáveis e versionáveis
-- Demonstração visual do sistema
+### **Funcionalidade 2.1: Setup N8N e Primeira Integração**
+**CAs**: N8N container funcionando + Interface localhost:5678 acessível + Workflow manual criado que chama FastAPI + Comunicação N8N→FastAPI testada + Workflow exportado como JSON
 
-**Resultado Esperado**: Usuário pode conversar com sistema através de interface visual intuitiva, sem linha de comando.
+### **Funcionalidade 2.2: Workflow de Chat Completo**  
+**CAs**: Workflow visual completo + Interface para input usuário (webhook/form) + Fluxo Input→FastAPI→Resposta→Display + Usuário consegue conversar via browser + Workflow exportado
+
+### **Funcionalidade 2.3: Versionamento e Documentação**
+**CAs**: Workflows salvos em n8n_workflows/ + Instruções de importação documentadas + Sistema demonstrável end-to-end + README atualizado + Processo repetível
+
+**Resultado Esperado**: Usuário conversa com sistema via interface visual N8N, sem linha de comando, usando FastAPI existente como backend.
 
 ---
 

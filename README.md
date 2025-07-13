@@ -23,7 +23,9 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **Docker Compose**: Containerização completa
 
 ### **Interface e Orchestração**
-- **N8N**: Interface visual principal para workflows e demonstrações
+- **N8N**: Interface visual para workflows e demonstrações
+- **Webhooks**: Formulários web para input do usuário via N8N
+- **HTTP Integration**: N8N chama FastAPI via `http://api:8000`
 - **PostgREST**: API REST automática para acesso direto aos dados
 - **React (opcional)**: Interface web complementar se necessário
 
@@ -32,6 +34,27 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **Loguru**: Logging estruturado e debugging
 - **python-multipart**: Upload de arquivos e dados multipart
 - **asyncio**: Processamento assíncrono para chat streaming
+
+---
+
+## URLs de Acesso
+
+### **Sistema Completo**
+```bash
+# Executar todos os serviços
+docker-compose up -d
+
+# URLs principais:
+# http://localhost:5678    - N8N Interface (admin/admin123)
+# http://localhost:8000    - FastAPI Backend + Docs
+# http://localhost:3000    - PostgREST (dados diretos)
+Workflows N8N
+bash# Importar workflows salvos:
+# 1. Acessar http://localhost:5678
+# 2. Menu > Import > Selecionar arquivo de n8n_workflows/
+# 3. Workflows disponíveis:
+#    - chat_basic.json: Integração básica com FastAPI
+#    - chat_interface.json: Interface completa de usuário
 
 ---
 
