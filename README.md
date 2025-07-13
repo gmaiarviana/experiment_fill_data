@@ -359,9 +359,16 @@ curl "http://localhost:3000/consultas"
 - `DELETE /data/consultas/{id}` - Cancelar consulta
 
 ### **Sistema e Debug**
-- `GET /system/health` - Status de todos os serviços
-- `GET /system/metrics` - Métricas de uso e performance
-- `GET /debug/extractions` - Log de extrações para análise
+- `GET /system/health` - Status de PostgreSQL e FastAPI com verificação em paralelo
+- `GET /system/metrics` - Métricas de uso e performance (planejado)
+- `GET /debug/extractions` - Log de extrações para análise (planejado)
+
+### **Logging e Monitoramento**
+- **Logs estruturados JSON**: Configurados via Loguru com `serialize=True`
+- **Níveis configuráveis**: Via environment variable `LOG_LEVEL` (default: INFO)
+- **Chat tracking**: Cada mensagem logada com timestamp e detalhes
+- **Visualização**: `docker logs api --tail N` para logs recentes
+- **Health monitoring**: Endpoint `/system/health` verifica todos os serviços
 
 ---
 

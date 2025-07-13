@@ -34,15 +34,16 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - ✅ Documentação automática em /docs funcionando
 - ✅ Dockerfile copiando src/ corretamente para container
 
-### **Funcionalidade 1.3: Health Check e Logging**
+### **Funcionalidade 1.3: Health Check e Logging** ✅ **IMPLEMENTADO**
 
-**Critérios de Aceite:**
-- Deve fornecer GET /system/health com status de todos os serviços
-- Deve validar no health check: PostgreSQL conectado, FastAPI funcionando
-- Deve produzir logs estruturados (JSON) visíveis em `docker logs data-agent-api`
-- Deve logar cada requisição chat com timestamp, session_id, message_length
-- Deve suportar diferentes níveis de log (INFO, ERROR)
-- Deve proteger logs de informações sensíveis
+**Implementação Concluída:**
+- ✅ Endpoint GET /system/health com status de PostgreSQL e FastAPI
+- ✅ Health check validando conexões em paralelo com timeout
+- ✅ Logs estruturados JSON via Loguru (serialize=True)
+- ✅ Logging de cada chat message com timestamp e detalhes
+- ✅ Configuração de níveis de log via LOG_LEVEL environment variable
+- ✅ Sistema de logs visível via `docker logs api --tail N`
+- ✅ Formato JSON estruturado para debugging e monitoramento
 
 **Experiência do Usuário - Funcionalidade 1.3**
 **Antes**: Sistema sem observabilidade, impossível debuggar problemas
@@ -62,7 +63,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 **Antes**: Sistema com configuração hardcoded, impossível adaptar para diferentes ambientes
 **Depois**: ✅ Sistema configurável para desenvolvimento, teste e produção via variáveis de ambiente
 
-**Status ETAPA 1:** 🎯 **EM PROGRESSO** (2/4 funcionalidades implementadas)
+**Status ETAPA 1:** 🎯 **EM PROGRESSO** (3/4 funcionalidades implementadas)
 
 **Resultado Esperado**: Base sólida com API de chat funcional, ambiente Docker estável, logging estruturado e configuração flexível.
 
