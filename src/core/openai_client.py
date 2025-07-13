@@ -1,6 +1,6 @@
 import requests
 import json
-import os
+from src.core.config import get_settings
 
 
 class OpenAIClient:
@@ -10,14 +10,14 @@ class OpenAIClient:
     
     def __init__(self):
         """
-        Inicializa o cliente OpenAI carregando as variáveis de ambiente.
+        Inicializa o cliente OpenAI usando configuração centralizada.
         """
-        self.api_key = os.getenv("OPENAI_API_KEY")
-        if not self.api_key:
-            raise ValueError("OPENAI_API_KEY não encontrada nas variáveis de ambiente")
+        # Get centralized settings
+        settings = get_settings()
         
-        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-        self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "500"))
+        self.api_key = settings.OPENAI_API_KEY
+        self.model = settings.OPENAI_MODEL
+        self.max_tokens = settings.OPENAI_MAX_TOKENS
         self.system_prompt = "Você é um assistente conversacional amigável. Responda de forma natural e útil."
         self.api_url = "https://api.openai.com/v1/chat/completions"
     

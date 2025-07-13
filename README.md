@@ -363,6 +363,13 @@ curl "http://localhost:3000/consultas"
 - `GET /system/metrics` - Métricas de uso e performance (planejado)
 - `GET /debug/extractions` - Log de extrações para análise (planejado)
 
+### **Configuração e Ambiente**
+- **Sistema centralizado**: Configuração via `src/core/config.py` com validação
+- **Variáveis obrigatórias**: `DATABASE_URL`, `OPENAI_API_KEY` com validação automática
+- **Configurações opcionais**: `LOG_LEVEL`, `DEBUG`, `HOST`, `PORT` com defaults
+- **Container compatibility**: Host 0.0.0.0 e environment variables acessíveis
+- **Arquivo .env.example**: Template completo com todas as variáveis necessárias
+
 ### **Logging e Monitoramento**
 - **Logs estruturados JSON**: Configurados via Loguru com `serialize=True`
 - **Níveis configuráveis**: Via environment variable `LOG_LEVEL` (default: INFO)
@@ -397,5 +404,5 @@ curl "http://localhost:3000/consultas"
 ### **Production-Ready from Start**
 - Docker para zero-config setup
 - Logging estruturado para debugging
-- Configuração via environment variables
+- Configuração centralizada via environment variables
 - Health checks e monitoramento integrado

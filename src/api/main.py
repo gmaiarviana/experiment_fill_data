@@ -4,15 +4,19 @@ from src.api.schemas.chat import ChatRequest, ChatResponse
 from src.api.routers.system import router as system_router
 from src.core.openai_client import OpenAIClient
 from src.core.logging import setup_logging
+from src.core.config import get_settings
 from datetime import datetime
 import uuid
 
-# Setup logging
+# Get centralized settings
+settings = get_settings()
+
+# Setup logging with configured log level
 logger = setup_logging()
 
 app = FastAPI(
-    title="Data Structuring Agent",
-    version="1.0.0"
+    title=settings.APP_NAME,
+    version=settings.APP_VERSION
 )
 
 logger.info("✅ FastAPI app criada - main.py executando")
