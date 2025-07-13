@@ -17,6 +17,8 @@ htmlcov/
 # Editor configurations
 .vscode/
 .idea/
+.cursor/
+.claude/
 *.swp
 *.swo
 *~
