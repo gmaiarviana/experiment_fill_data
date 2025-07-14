@@ -1,0 +1,125 @@
+{
+  "name": "Entity Extraction Demo - Funcionalidade 3.1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "extract-demo",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "id": "webhook-input",
+      "name": "Webhook Input",
+      "webhookId": "extract-demo-webhook"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/extract/entities",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({\"message\": $json.body.message}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "id": "extract-entities",
+      "name": "Extract Entities"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/chat/message",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "body": "={{ JSON.stringify({\"message\": $json.body.message}) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 200],
+      "id": "chat-response",
+      "name": "Chat Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"original_message\": $('Webhook Input').first().json.body.message,\n  \"chat_response\": $('Chat Response').first().json.response,\n  \"entity_extraction\": {\n    \"success\": $('Extract Entities').first().json.success,\n    \"confidence_score\": $('Extract Entities').first().json.confidence_score,\n    \"extracted_data\": $('Extract Entities').first().json.extracted_data,\n    \"missing_fields\": $('Extract Entities').first().json.missing_fields,\n    \"suggested_questions\": $('Extract Entities').first().json.suggested_questions,\n    \"is_complete\": $('Extract Entities').first().json.is_complete\n  },\n  \"timestamp\": new Date().toISOString()\n} }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.2,
+      "position": [440, 100],
+      "id": "respond-combined",
+      "name": "Respond Combined"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Input": {
+      "main": [
+        [
+          {
+            "node": "Extract Entities",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Entities": {
+      "main": [
+        [
+          {
+            "node": "Respond Combined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Combined",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": ["demo", "entity-extraction", "funcionalidade-3.1"]
+}
