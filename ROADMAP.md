@@ -40,14 +40,24 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 **Objetivo**: Sistema extrai dados estruturados de conversas naturais usando abordagem híbrida LLM + código, com persistência automática e framework extensível.
 
-### **Funcionalidade 3.1: LLM Entity Extraction**
-**Critérios de Aceite:**
-- ✅ OpenAI function calling integrado ao client existente
-- ✅ Sistema extrai: nome, telefone, data, horário, tipo_consulta de linguagem natural
-- ✅ Response estruturado com confidence score (0.0-1.0)
-- ✅ Identificação automática de campos faltantes
-- ✅ **Teste CLI**: `python -m src.main extract "texto natural"` → JSON estruturado
-- ✅ **Teste N8N**: Workflow mostra entidades extraídas visualmente
+### **Funcionalidade 3.1: LLM Entity Extraction - ✅ IMPLEMENTADA**
+
+**Critérios de Aceite Atingidos:**
+- ✅ **OpenAI function calling integrado**: Cliente OpenAI com function calling implementado
+- ✅ **Sistema extrai entidades**: nome, telefone, data, horário, tipo_consulta de linguagem natural  
+- ✅ **Response estruturado com confidence score**: Score baseado em completude (0.0-1.0)
+- ✅ **Identificação automática de campos faltantes**: Sistema detecta e sugere perguntas
+- ✅ **Teste CLI funcionando**: `python -m src.main extract "texto natural"` → JSON estruturado
+- ✅ **Teste N8N funcionando**: Workflow com webhook + chat trigger operacional
+
+**Implementação Realizada:**
+- **EntityExtractor**: `src/core/entity_extraction.py` - Extração especializada para consultas médicas
+- **CLI Command**: `src/main.py` - Sistema de linha de comando para testes
+- **HTTP Endpoints**: `/extract/entities` e `/chat/message` com validação completa  
+- **N8N Interface**: Dupla modalidade - Webhook: `http://localhost:5678/webhook/extract-demo` + Chat Trigger visual
+- **Schemas Pydantic**: Validação estruturada em `src/api/schemas/chat.py`
+
+**Resultado**: Sistema converte linguagem natural em dados estruturados com confidence score de até 100%.
 
 ### **Funcionalidade 3.2: Smart Validation & Normalization**
 **Critérios de Aceite:**
