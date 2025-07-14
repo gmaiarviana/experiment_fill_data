@@ -36,37 +36,74 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## 🎯 **ETAPA 3: EXTRAÇÃO INTELIGENTE - PLANEJADA**
+## 🎯 **ETAPA 3: EXTRAÇÃO INTELIGENTE - EM DESENVOLVIMENTO**
 
-**Objetivo**: Sistema extrai dados estruturados de conversas naturais usando OpenAI.
+**Objetivo**: Sistema extrai dados estruturados de conversas naturais usando abordagem híbrida LLM + código, com persistência automática e framework extensível.
 
-**Capacidades Planejadas:**
-- Integração OpenAI para extração de entidades
-- Processamento de linguagem natural
-- Extração de nome, telefone, data, horário
-- Confidence scoring automático
-- Resposta estruturada com dados extraídos
+### **Funcionalidade 3.1: LLM Entity Extraction**
+**Critérios de Aceite:**
+- ✅ OpenAI function calling integrado ao client existente
+- ✅ Sistema extrai: nome, telefone, data, horário, tipo_consulta de linguagem natural
+- ✅ Response estruturado com confidence score (0.0-1.0)
+- ✅ Identificação automática de campos faltantes
+- ✅ **Teste CLI**: `python -m src.main extract "texto natural"` → JSON estruturado
+- ✅ **Teste N8N**: Workflow mostra entidades extraídas visualmente
 
-**Resultado Esperado**: Sistema entende linguagem natural e transforma automaticamente em dados organizados.
+### **Funcionalidade 3.2: Smart Validation & Normalization**
+**Critérios de Aceite:**
+- ✅ Validação de telefones brasileiros (formato correto)
+- ✅ Parsing de datas relativas ("amanhã", "próxima sexta") → ISO format
+- ✅ Normalização automática (capitalização nomes, formatação telefones)
+- ✅ Confidence scoring baseado em qualidade da validação
+- ✅ **Teste CLI**: `python -m src.main validate "dados_json"` → dados normalizados
+- ✅ **Teste direto**: Comandos PowerShell testam validação individual
+
+### **Funcionalidade 3.3: Intelligent Reasoning Loop**
+**Critérios de Aceite:**
+- ✅ Loop Think → Extract → Validate → Act implementado
+- ✅ Sistema gera perguntas específicas para dados faltantes
+- ✅ Context awareness: lembra informações durante sessão
+- ✅ Decisão automática: extrair vs perguntar vs confirmar
+- ✅ **Teste CLI**: `python -m src.main reason "texto parcial"` → próxima ação
+- ✅ **Teste N8N**: Chat conversacional completo funcionando
+
+### **Funcionalidade 3.4: PostgreSQL Schema Setup**
+**Critérios de Aceite:**
+- ✅ Schema consultas + extraction_logs + chat_sessions criado
+- ✅ Database migrations para criação automática de tabelas
+- ✅ Models SQLAlchemy para entidades do domínio
+- ✅ **Teste CLI**: `python -m src.main setup-db` → tabelas criadas
+- ✅ **Teste direto**: Conexão PostgreSQL funcional via Docker
+
+### **Funcionalidade 3.5: Data Persistence**
+**Critérios de Aceite:**
+- ✅ Repository pattern para CRUD operations
+- ✅ Dados extraídos são persistidos automaticamente
+- ✅ PostgREST integration para query direta dos dados
+- ✅ **Teste CLI**: `python -m src.main persist "dados_json"` → ID do registro
+- ✅ **Teste PostgREST**: `Invoke-WebRequest http://localhost:3000/consultas` → lista registros
+
+### **Funcionalidade 3.6: Complete Chat Integration**
+**Critérios de Aceite:**
+- ✅ Endpoint `/chat/message` evolui para usar extração + persistência
+- ✅ Session management com context entre mensagens
+- ✅ Response inclui: resposta conversacional + dados estruturados + status
+- ✅ Workflow N8N demonstra fluxo completo end-to-end
+- ✅ **Teste N8N**: Chat interface + visualização dados estruturados
+- ✅ **Teste CLI**: Conversa completa via linha de comando
+
+**Arquitetura Técnica:**
+- **Abordagem Híbrida**: LLM para naturalidade + código para validação
+- **Framework Extensível**: Estrutura genérica para novos domínios (domains/)
+- **Error Handling**: Confidence threshold + fallback conversacional
+- **Performance**: Function calling otimizado + validação local
+- **Persistência**: PostgreSQL + PostgREST + Repository pattern
+
+**Resultado Esperado**: Sistema converte linguagem natural em dados estruturados automaticamente, persiste registros organizados e mantém conversação natural.
 
 ---
 
-## 🎯 **ETAPA 4: PERSISTÊNCIA DE DADOS - PLANEJADA**
-
-**Objetivo**: Dados extraídos são salvos e organizados em banco PostgreSQL.
-
-**Capacidades Planejadas:**
-- PostgreSQL integrado via Docker
-- Modelo de dados para consultas
-- PostgREST para API automática
-- Persistência de dados extraídos
-- Consulta de registros salvos
-
-**Resultado Esperado**: Conversas geram registros organizados que ficam salvos e consultáveis.
-
----
-
-## 🎯 **ETAPA 5: MEMORY CONVERSACIONAL - PLANEJADA**
+## 🎯 **ETAPA 4: MEMORY CONVERSACIONAL - PLANEJADA**
 
 **Objetivo**: Sistema mantém contexto durante sessões de conversa.
 
@@ -81,7 +118,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## 🎯 **ETAPA 6: REASONING BÁSICO - PLANEJADA**
+## 🎯 **ETAPA 5: REASONING BÁSICO - PLANEJADA**
 
 **Objetivo**: Sistema decide inteligentemente próximos passos na conversa.
 
@@ -98,7 +135,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ## 🔮 **PRÓXIMAS ETAPAS FUTURAS**
 
-### **ETAPA 7: Memory Persistente Cross-Session**
+### **ETAPA 6: Memory Persistente Cross-Session**
 **Objetivo**: Sistema lembra usuário entre conversas diferentes, aprendizado contínuo.
 
 **Capacidades Planejadas:**
@@ -108,7 +145,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - Feedback loop para melhorias
 - Personalização automática
 
-### **ETAPA 8: Múltiplas Ações e Workflows**
+### **ETAPA 7: Múltiplas Ações e Workflows**
 **Objetivo**: Sistema versátil com capacidade de executar diferentes tipos de ação.
 
 **Capacidades Planejadas:**
@@ -118,7 +155,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - Validações de negócio avançadas
 - Management interface completa
 
-### **ETAPA 9: Extensibilidade Multi-Domínio**
+### **ETAPA 8: Extensibilidade Multi-Domínio**
 **Objetivo**: Plataforma extensível para outros domínios além de consultas médicas.
 
 **Capacidades Planejadas:**

@@ -38,24 +38,6 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 
 ---
 
-## URLs de Acesso
-
-### **Sistema Completo**
-```bash
-# Executar todos os serviços
-docker-compose up -d
-
-# URLs principais:
-# http://localhost:5678    - N8N Interface (admin/admin123)
-# http://localhost:8000    - FastAPI Backend + Docs
-# http://localhost:3000    - PostgREST (dados diretos)
-
-# Workflows operacionais:
-# http://localhost:5678/webhook/chat - Chat interface completa
-# Backend control via: WorkflowManager + N8NClient
-
----
-
 ## Decisões Arquiteturais
 
 ### **1. Arquitetura Modular com Context Engineering**
@@ -97,7 +79,41 @@ docker-compose up -d
 - Validação separada da coleta
 - Diferentes agentes para diferentes domínios
 
-### **3. Function Calling Architecture**
+### **3. Abordagem Híbrida LLM + Código**
+
+**Decisão**: Combinar LLM para naturalidade com código para precisão e eficiência.
+
+**LLM Responsibilities**:
+- Extração de entidades de linguagem natural
+- Reasoning conversacional (Think → Extract → Validate → Act)
+- Geração de perguntas específicas para dados faltantes
+- Context awareness e continuidade de sessão
+
+**Code Responsibilities**:
+- Validação de dados (telefones brasileiros, datas futuras)
+- Normalização (formatação, capitalização)
+- Regras de negócio específicas
+- Operações de banco de dados
+
+**Vantagem**: Otimiza custo/performance mantendo flexibilidade conversacional.
+
+### **4. Framework Extensível por Domínio**
+
+**Decisão**: Arquitetura genérica que aceita novos casos de uso além de consultas médicas.
+
+```python
+# Estrutura genérica
+domains/
+├── consultation/     # Primeiro caso de uso
+│   ├── entities.py   # nome, telefone, data, horário, tipo
+│   ├── prompts.py    # System prompts específicos
+│   └── validators.py # Regras de negócio específicas
+└── future_domain/    # Futuras extensões
+```
+
+**Vantagem**: Sistema evolui sem retrabalho arquitetural, novos domínios são plug-and-play.
+
+### **5. Function Calling Architecture**
 
 **Decisão**: LLM decide dinamicamente quais funções executar baseado na conversa.
 
@@ -114,7 +130,7 @@ functions = [
 
 **Vantagem**: Sistema se adapta automaticamente a diferentes tipos de conversa sem regras fixas.
 
-### **4. Reasoning Loop Simplificado**
+### **6. Reasoning Loop Simplificado**
 
 **Decisão**: Ciclo Think → Extract → Validate → Act para cada interação.
 
@@ -150,6 +166,12 @@ src/
 │   └── functions/            # Funções disponíveis para o agente
 │       ├── consultation_functions.py  # Funções específicas de consulta
 │       └── validation_functions.py    # Funções de validação
+├── domains/                   # Framework extensível
+│   └── consultation/         # Domínio de consultas médicas
+│       ├── entities.py       # Definição de entidades
+│       ├── prompts.py        # System prompts específicos
+│       ├── validators.py     # Validação e normalização
+│       └── functions.py      # Function calling definitions
 ├── models/                    # SQLAlchemy models
 │   ├── consulta.py           # Modelo principal Consulta
 │   ├── session.py            # Sessões de chat
@@ -297,6 +319,25 @@ services:
       - n8n_data:/home/node/.n8n
     depends_on:
       - api
+```
+
+---
+
+## URLs de Acesso
+
+### **Sistema Completo**
+```bash
+# Executar todos os serviços
+docker-compose up -d
+
+# URLs principais:
+# http://localhost:5678    - N8N Interface (admin/admin123)
+# http://localhost:8000    - FastAPI Backend + Docs
+# http://localhost:3000    - PostgREST (dados diretos)
+
+# Workflows operacionais:
+# http://localhost:5678/webhook/chat - Chat interface completa
+# Backend control via: WorkflowManager + N8NClient
 ```
 
 ---
