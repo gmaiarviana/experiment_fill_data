@@ -1,0 +1,105 @@
+{
+    "name": "Funcionalidade 3.1 - Entity Extraction (Fixed)",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "extract-demo",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [-800, -100],
+        "id": "webhook-input",
+        "name": "🌐 Webhook Input",
+        "webhookId": "extract-demo-webhook"
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "typeVersion": 1.1,
+        "position": [-800, 200],
+        "id": "chat-trigger",
+        "name": "💬 Chat Trigger",
+        "webhookId": "chat-trigger-id"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "http://api:8000/extract/entities",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "contentType": "raw",
+          "rawContentType": "application/json",
+          "body": "={{ JSON.stringify({\"message\": $json.message || $json.body?.message || $json.chatInput || \"teste\"}) }}"
+        },
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [-400, 50],
+        "id": "extract-entities",
+        "name": "🧠 Extract Entities"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $('🧠 Extract Entities').first().json }}"
+        },
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.2,
+        "position": [100, 50],
+        "id": "respond-combined",
+        "name": "📋 Respond Combined"
+      }
+    ],
+    "connections": {
+      "🌐 Webhook Input": {
+        "main": [
+          [
+            {
+              "node": "🧠 Extract Entities",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "💬 Chat Trigger": {
+        "main": [
+          [
+            {
+              "node": "🧠 Extract Entities",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "🧠 Extract Entities": {
+        "main": [
+          [
+            {
+              "node": "📋 Respond Combined",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "active": true,
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "tags": ["funcionalidade-3.1", "entity-extraction", "fixed"]
+  }
