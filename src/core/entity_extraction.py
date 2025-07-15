@@ -1,5 +1,7 @@
 from typing import Dict, Any, Optional
+from loguru import logger
 from src.core.openai_client import OpenAIClient
+from src.core.data_normalizer import normalize_consulta_data
 
 
 class EntityExtractor:
@@ -59,6 +61,28 @@ class EntityExtractor:
         )
         
         if result["success"]:
+            # Aplica normalização aos dados extraídos
+            try:
+                normalization_result = normalize_consulta_data(result["extracted_data"])
+                
+                # Usa dados normalizados e confidence score do normalizador
+                result["extracted_data"] = normalization_result["normalized_data"]
+                result["confidence_score"] = normalization_result["confidence_score"]
+                result["normalization_applied"] = True
+                
+                # Adiciona informações de validação se houver erros
+                if normalization_result["validation_errors"]:
+                    result["validation_errors"] = normalization_result["validation_errors"]
+                    logger.warning(f"Erros de validação na normalização: {normalization_result['validation_errors']}")
+                
+                logger.info(f"Normalização aplicada com sucesso. Confidence score: {normalization_result['confidence_score']}")
+                
+            except Exception as e:
+                # Se normalização falhar, usa dados originais e loga warning
+                logger.warning(f"Falha na normalização, usando dados originais: {str(e)}")
+                result["normalization_applied"] = False
+                result["normalization_error"] = str(e)
+            
             # Adiciona informações específicas sobre campos faltantes
             missing_fields = result["missing_fields"]
             
