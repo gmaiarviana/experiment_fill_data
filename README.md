@@ -35,6 +35,8 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **Loguru**: Logging estruturado e debugging
 - **python-multipart**: Upload de arquivos e dados multipart
 - **asyncio**: Processamento assíncrono para chat streaming
+- **validators**: Validação de dados brasileiros (CPF, telefone, CEP)
+- **python-dateutil**: Parsing e manipulação de datas em português
 
 ---
 
@@ -185,7 +187,9 @@ src/
 ├── core/                      # Configuração e utils
 │   ├── config.py             # Settings via environment
 │   ├── database.py           # Conexão PostgreSQL
-│   └── logging.py            # Setup do Loguru
+│   ├── logging.py            # Setup do Loguru
+│   ├── validators.py         # Validação de dados brasileiros
+│   └── data_normalizer.py    # Normalização e formatação de dados
 └── main.py                    # Entry point CLI (para testes)
 ```
 
@@ -419,6 +423,7 @@ curl "http://localhost:3000/consultas"
 - `GET /data/consultas/{id}` - Detalhes de consulta específica
 - `PUT /data/consultas/{id}` - Atualizar consulta (correções)
 - `DELETE /data/consultas/{id}` - Cancelar consulta
+- `POST /validate` - Validar dados estruturados antes da persistência
 
 ### **Sistema e Debug**
 - `GET /system/health` - Status de PostgreSQL e FastAPI com verificação em paralelo

@@ -59,8 +59,8 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 **Resultado**: Sistema converte linguagem natural em dados estruturados com confidence score de até 100%.
 
-### **Funcionalidade 3.2: Smart Validation & Normalization**
-**Critérios de Aceite:**
+### **Funcionalidade 3.2: Smart Validation & Normalization - ✅ IMPLEMENTADA**
+**Critérios de Aceite Atingidos:**
 - ✅ Validação de telefones brasileiros (formato correto)
 - ✅ Parsing de datas relativas ("amanhã", "próxima sexta") → ISO format
 - ✅ Normalização automática (capitalização nomes, formatação telefones)
@@ -68,39 +68,49 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - ✅ **Teste CLI**: `python -m src.main validate "dados_json"` → dados normalizados
 - ✅ **Teste direto**: Comandos PowerShell testam validação individual
 
+**Implementação Realizada:**
+- **Validators**: `src/core/validators.py` - Validação de dados brasileiros (CPF, telefone, CEP)
+- **Data Normalizer**: `src/core/data_normalizer.py` - Normalização e formatação automática
+- **HTTP Endpoint**: `POST /validate` - Validação de dados estruturados antes da persistência
+- **Date Parsing**: Suporte a datas relativas em português via python-dateutil
+- **Phone Validation**: Validação específica para formatos brasileiros
+- **Schemas Pydantic**: Validação integrada com normalização automática
+
+**Resultado**: Sistema valida e normaliza dados automaticamente com alta precisão para contexto brasileiro.
+
 ### **Funcionalidade 3.3: Intelligent Reasoning Loop**
 **Critérios de Aceite:**
-- ✅ Loop Think → Extract → Validate → Act implementado
-- ✅ Sistema gera perguntas específicas para dados faltantes
-- ✅ Context awareness: lembra informações durante sessão
-- ✅ Decisão automática: extrair vs perguntar vs confirmar
-- ✅ **Teste CLI**: `python -m src.main reason "texto parcial"` → próxima ação
-- ✅ **Teste N8N**: Chat conversacional completo funcionando
+- Loop Think → Extract → Validate → Act implementado
+- Sistema gera perguntas específicas para dados faltantes
+- Context awareness: lembra informações durante sessão
+- Decisão automática: extrair vs perguntar vs confirmar
+- **Teste CLI**: `python -m src.main reason "texto parcial"` → próxima ação
+- **Teste N8N**: Chat conversacional completo funcionando
 
 ### **Funcionalidade 3.4: PostgreSQL Schema Setup**
 **Critérios de Aceite:**
-- ✅ Schema consultas + extraction_logs + chat_sessions criado
-- ✅ Database migrations para criação automática de tabelas
-- ✅ Models SQLAlchemy para entidades do domínio
-- ✅ **Teste CLI**: `python -m src.main setup-db` → tabelas criadas
-- ✅ **Teste direto**: Conexão PostgreSQL funcional via Docker
+- Schema consultas + extraction_logs + chat_sessions criado
+- Database migrations para criação automática de tabelas
+- Models SQLAlchemy para entidades do domínio
+- **Teste CLI**: `python -m src.main setup-db` → tabelas criadas
+- **Teste direto**: Conexão PostgreSQL funcional via Docker
 
 ### **Funcionalidade 3.5: Data Persistence**
 **Critérios de Aceite:**
-- ✅ Repository pattern para CRUD operations
-- ✅ Dados extraídos são persistidos automaticamente
-- ✅ PostgREST integration para query direta dos dados
-- ✅ **Teste CLI**: `python -m src.main persist "dados_json"` → ID do registro
-- ✅ **Teste PostgREST**: `Invoke-WebRequest http://localhost:3000/consultas` → lista registros
+- Repository pattern para CRUD operations
+- Dados extraídos são persistidos automaticamente
+- PostgREST integration para query direta dos dados
+- **Teste CLI**: `python -m src.main persist "dados_json"` → ID do registro
+- **Teste PostgREST**: `Invoke-WebRequest http://localhost:3000/consultas` → lista registros
 
 ### **Funcionalidade 3.6: Complete Chat Integration**
 **Critérios de Aceite:**
-- ✅ Endpoint `/chat/message` evolui para usar extração + persistência
-- ✅ Session management com context entre mensagens
-- ✅ Response inclui: resposta conversacional + dados estruturados + status
-- ✅ Workflow N8N demonstra fluxo completo end-to-end
-- ✅ **Teste N8N**: Chat interface + visualização dados estruturados
-- ✅ **Teste CLI**: Conversa completa via linha de comando
+- Endpoint `/chat/message` evolui para usar extração + persistência
+- Session management com context entre mensagens
+- Response inclui: resposta conversacional + dados estruturados + status
+- Workflow N8N demonstra fluxo completo end-to-end
+- **Teste N8N**: Chat interface + visualização dados estruturados
+- **Teste CLI**: Conversa completa via linha de comando
 
 **Arquitetura Técnica:**
 - **Abordagem Híbrida**: LLM para naturalidade + código para validação
