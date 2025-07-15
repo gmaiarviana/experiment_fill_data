@@ -12,13 +12,18 @@ class ChatRequest(BaseModel):
         description="Mensagem não pode ser vazia",
         example="Olá, preciso de ajuda"
     )
+    session_id: Optional[str] = Field(None, description="ID da sessão (opcional, será gerado se não fornecido)")
 
 
 class ChatResponse(BaseModel):
-    """Schema para respostas de chat"""
+    """Schema para respostas de chat com dados do ReasoningEngine"""
     response: str = Field(..., description="Resposta do sistema")
     timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp da resposta")
     session_id: str = Field(..., description="ID da sessão do chat")
+    action: Optional[str] = Field(None, description="Ação executada pelo ReasoningEngine")
+    extracted_data: Optional[Dict[str, Any]] = Field(None, description="Dados extraídos pela engine")
+    confidence: Optional[float] = Field(None, description="Score de confiança da resposta (0.0-1.0)")
+    next_questions: Optional[List[str]] = Field(None, description="Próximas perguntas sugeridas")
 
 
 class EntityExtractionRequest(BaseModel):

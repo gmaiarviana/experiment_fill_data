@@ -5,6 +5,7 @@ from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequ
 from src.api.routers.system import router as system_router
 from src.core.openai_client import OpenAIClient
 from src.core.entity_extraction import EntityExtractor
+from src.core.reasoning_engine import ReasoningEngine
 from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
 from src.core.logging import setup_logging
 from src.core.config import get_settings
@@ -58,6 +59,38 @@ except Exception as e:
     logger.error(f"Erro ao inicializar Entity Extractor: {e}")
     entity_extractor = None
 
+# Initialize Reasoning Engine
+try:
+    reasoning_engine = ReasoningEngine()
+    logger.info("Reasoning Engine inicializado com sucesso")
+except Exception as e:
+    logger.error(f"Erro ao inicializar Reasoning Engine: {e}")
+    reasoning_engine = None
+
+# Global session management
+sessions: Dict[str, Dict[str, Any]] = {}
+
+
+def cleanup_old_sessions():
+    """Remove sessions older than 24 hours"""
+    current_time = datetime.utcnow()
+    sessions_to_remove = []
+    
+    for session_id, context in sessions.items():
+        session_start = context.get("session_start")
+        if session_start:
+            try:
+                start_time = datetime.fromisoformat(session_start)
+                if (current_time - start_time).total_seconds() > 86400:  # 24 hours
+                    sessions_to_remove.append(session_id)
+            except (ValueError, TypeError):
+                # Invalid timestamp, remove session
+                sessions_to_remove.append(session_id)
+    
+    for session_id in sessions_to_remove:
+        del sessions[session_id]
+        logger.info(f"Sessão expirada removida: {session_id}")
+
 
 @app.get("/")
 async def root():
@@ -71,8 +104,8 @@ async def root():
 
 @app.post("/chat/message")
 async def chat_message(request: Request) -> ChatResponse:
-    """Chat message endpoint with detailed logging and validation"""
-    logger.info("=== INÍCIO: Endpoint /chat/message ===")
+    """Chat message endpoint with ReasoningEngine integration and session management"""
+    logger.info("=== INÍCIO: Endpoint /chat/message com ReasoningEngine ===")
     
     try:
         # Log request details
@@ -107,24 +140,99 @@ async def chat_message(request: Request) -> ChatResponse:
             logger.error(f"Erro na validação Pydantic: {e}")
             raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
         
-        # Process chat message
-        if openai_client is None:
-            logger.warning("OpenAI client não disponível")
-            return ChatResponse(
-                response="Desculpe, o serviço de IA não está disponível no momento. Tente novamente mais tarde.",
-                session_id=str(uuid.uuid4()),
+        # Generate session ID if not provided in request
+        session_id = body_json.get("session_id", str(uuid.uuid4()))
+        
+        # Get or create session context
+        if session_id not in sessions:
+            sessions[session_id] = {
+                "session_start": datetime.utcnow().isoformat(),
+                "conversation_history": [],
+                "extracted_data": {},
+                "total_confidence": 0.0,
+                "confidence_count": 0,
+                "average_confidence": 0.0
+            }
+            logger.info(f"Nova sessão criada: {session_id}")
+        else:
+            logger.info(f"Sessão existente recuperada: {session_id}")
+        
+        context = sessions[session_id]
+        
+        # Cleanup old sessions periodically
+        if len(sessions) % 10 == 0:  # Every 10 requests
+            cleanup_old_sessions()
+        
+        # Process message with ReasoningEngine
+        if reasoning_engine is None:
+            logger.warning("Reasoning Engine não disponível, usando fallback OpenAI")
+            if openai_client is None:
+                return ChatResponse(
+                    response="Desculpe, o serviço de IA não está disponível no momento. Tente novamente mais tarde.",
+                    session_id=session_id,
+                    timestamp=datetime.utcnow()
+                )
+            
+            # Fallback to OpenAI
+            ai_response = await openai_client.chat_completion(chat_request.message)
+            response = ChatResponse(
+                response=ai_response,
+                session_id=session_id,
                 timestamp=datetime.utcnow()
             )
-        
-        # Get response from OpenAI
-        ai_response = await openai_client.chat_completion(chat_request.message)
-        logger.info("Resposta do OpenAI gerada com sucesso")
-        
-        response = ChatResponse(
-            response=ai_response,
-            session_id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow()
-        )
+        else:
+            # Use ReasoningEngine
+            logger.info(f"Processando mensagem com ReasoningEngine: '{chat_request.message[:50]}...'")
+            
+            try:
+                result = await reasoning_engine.process_message(chat_request.message, context)
+                logger.info("ReasoningEngine processamento concluído com sucesso")
+                
+                # Update session context
+                sessions[session_id] = context
+                
+                # Extract response components
+                action = result.get("action", "unknown")
+                response_text = result.get("response", "Desculpe, não consegui processar sua mensagem.")
+                extracted_data = result.get("data", {})
+                confidence = result.get("confidence", 0.0)
+                
+                # Log reasoning results
+                logger.info(f"ReasoningEngine resultado - Ação: {action}, Confidence: {confidence:.2f}")
+                if extracted_data:
+                    logger.info(f"Dados extraídos: {list(extracted_data.keys())}")
+                
+                # Create enhanced response with ReasoningEngine data
+                response = ChatResponse(
+                    response=response_text,
+                    session_id=session_id,
+                    timestamp=datetime.utcnow(),
+                    action=action,
+                    extracted_data=extracted_data,
+                    confidence=confidence,
+                    next_questions=result.get("next_questions", [])
+                )
+                
+                # Log reasoning results
+                logger.info(f"Reasoning data - Action: {action}, Confidence: {confidence}, Data: {extracted_data}")
+                
+            except Exception as e:
+                logger.error(f"Erro no ReasoningEngine: {str(e)}")
+                # Fallback to OpenAI if ReasoningEngine fails
+                if openai_client is not None:
+                    logger.info("Usando fallback OpenAI devido a erro no ReasoningEngine")
+                    ai_response = await openai_client.chat_completion(chat_request.message)
+                    response = ChatResponse(
+                        response=ai_response,
+                        session_id=session_id,
+                        timestamp=datetime.utcnow()
+                    )
+                else:
+                    response = ChatResponse(
+                        response=f"Ocorreu um erro ao processar sua mensagem: {str(e)}",
+                        session_id=session_id,
+                        timestamp=datetime.utcnow()
+                    )
         
         logger.info("=== FIM: Endpoint /chat/message - Sucesso ===")
         return response
@@ -332,3 +440,94 @@ async def validate_data(request: Request) -> ValidationResponse:
             validation_errors=[f"Erro inesperado: {str(e)}"],
             confidence_score=0.0
         )
+
+
+@app.get("/sessions/{session_id}")
+async def get_session_info(session_id: str):
+    """Get session information and context"""
+    logger.info(f"=== INÍCIO: Endpoint /sessions/{session_id} ===")
+    
+    try:
+        if session_id not in sessions:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        context = sessions[session_id]
+        
+        # Get session summary using ReasoningEngine
+        if reasoning_engine:
+            summary = reasoning_engine.get_context_summary(context)
+        else:
+            summary = {
+                "total_messages": len(context.get("conversation_history", [])),
+                "extracted_fields": list(context.get("extracted_data", {}).keys()),
+                "data_completeness": 0.0,
+                "last_action": "unknown"
+            }
+        
+        response = {
+            "session_id": session_id,
+            "session_start": context.get("session_start"),
+            "total_messages": summary["total_messages"],
+            "extracted_fields": summary["extracted_fields"],
+            "data_completeness": summary["data_completeness"],
+            "last_action": summary["last_action"],
+            "average_confidence": context.get("average_confidence", 0.0),
+            "conversation_history": context.get("conversation_history", [])
+        }
+        
+        logger.info(f"=== FIM: Endpoint /sessions/{session_id} - Sucesso ===")
+        return response
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao obter informações da sessão: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a session"""
+    logger.info(f"=== INÍCIO: Endpoint DELETE /sessions/{session_id} ===")
+    
+    try:
+        if session_id not in sessions:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        del sessions[session_id]
+        logger.info(f"Sessão removida: {session_id}")
+        
+        logger.info(f"=== FIM: Endpoint DELETE /sessions/{session_id} - Sucesso ===")
+        return {"message": "Session deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao deletar sessão: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/sessions")
+async def list_sessions():
+    """List all active sessions"""
+    logger.info("=== INÍCIO: Endpoint /sessions ===")
+    
+    try:
+        session_list = []
+        
+        for session_id, context in sessions.items():
+            session_info = {
+                "session_id": session_id,
+                "session_start": context.get("session_start"),
+                "total_messages": len(context.get("conversation_history", [])),
+                "extracted_fields": list(context.get("extracted_data", {}).keys()),
+                "average_confidence": context.get("average_confidence", 0.0)
+            }
+            session_list.append(session_info)
+        
+        logger.info(f"=== FIM: Endpoint /sessions - {len(session_list)} sessões ===")
+        return {"sessions": session_list, "total": len(session_list)}
+        
+    except Exception as e:
+        logger.error(f"Erro ao listar sessões: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
