@@ -134,7 +134,23 @@ N8N Integration: Workflow funcionalidade_3_3.json com webhook operacional
 
 ---
 
-## 🎯 **ETAPA 4: MEMORY CONVERSACIONAL - PLANEJADA**
+## 🎯 **ETAPA 4: INTERFACE CONVERSACIONAL - PLANEJADA**
+
+**Objetivo**: Interface visual limpa para conversação fluida com feedback em tempo real dos dados extraídos.
+
+**Capacidades Planejadas:**
+- Chat interface responsiva e mobile-friendly
+- Visualização em tempo real dos dados sendo extraídos
+- Progress feedback com % de completude e campos faltantes
+- Cards visuais mostrando dados estruturados lado a lado com conversa
+- Confidence score visual e status da extração
+- Single-page application focada apenas na conversação
+
+**Resultado Esperado**: Interface conversacional fluida onde usuários normais conseguem conversar naturalmente e ver dados sendo extraídos em tempo real, criando experiência demonstrável e profissional.
+
+---
+
+## 🎯 **ETAPA 5: MEMORY CONVERSACIONAL - PLANEJADA**
 
 **Objetivo**: Sistema mantém contexto durante sessões de conversa.
 
@@ -146,21 +162,6 @@ N8N Integration: Workflow funcionalidade_3_3.json com webhook operacional
 - Reutilização de contexto para completar dados
 
 **Resultado Esperado**: Sistema lembra informações durante conversa, criando experiência natural sem repetições.
-
----
-
-## 🎯 **ETAPA 5: REASONING BÁSICO - PLANEJADA**
-
-**Objetivo**: Sistema decide inteligentemente próximos passos na conversa.
-
-**Capacidades Planejadas:**
-- Reasoning loop: Think → Extract → Validate → Act
-- Detecção automática de dados incompletos
-- Geração de perguntas específicas para esclarecimentos
-- Confirmação inteligente antes de salvar
-- Function calling básico para decisões
-
-**Resultado Esperado**: Sistema conduz conversa de forma inteligente, fazendo apenas perguntas necessárias e confirmando quando apropriado.
 
 ---
 
