@@ -20,6 +20,7 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **SQLAlchemy**: ORM para persistência de dados
 - **PostgreSQL**: Banco de dados principal (via Docker)
 - **OpenAI API**: LLM para conversação via requests HTTP (estável)
+- **ReasoningEngine**: Motor de raciocínio para decisões conversacionais
 - **Docker Compose**: Containerização completa
 
 ### **Interface e Orchestração**
@@ -407,6 +408,20 @@ curl "http://localhost:3000/consultas"
 
 # Interface visual via N8N
 # Importar workflow: n8n_workflows/chat_interface.json
+
+### **Comandos Principais**
+```bash
+# Extração de entidades
+python -m src.main extract "Quero agendar consulta para João Silva"
+python -m src.main extract "João quer consulta amanhã às 14h, telefone 11999887766"
+
+# Validação e normalização
+python -m src.main validate '{"nome": "joao", "telefone": "11999887766"}'
+python -m src.main validate '{"nome": "Maria Silva", "email": "maria@email.com", "data": "amanhã"}'
+
+# Motor de raciocínio
+python -m src.main reason "Quero agendar consulta para João Silva"
+python -m src.main reason "Sim, confirma" '{"extracted_data": {"name": "João Silva"}}'
 ```
 
 ---
@@ -414,9 +429,10 @@ curl "http://localhost:3000/consultas"
 ## APIs Principais
 
 ### **Chat Conversacional**
-- `POST /chat/message` - Enviar mensagem + receber resposta estruturada
+- `POST /chat/message` - Enviar mensagem + receber resposta estruturada com extração automática
 - `GET /chat/sessions/{id}` - Recuperar contexto de sessão
 - `DELETE /chat/sessions/{id}` - Limpar sessão
+- `POST /sessions` - Criar nova sessão de conversa
 
 ### **Dados Estruturados**
 - `GET /data/consultas` - Listar consultas criadas
