@@ -41,4 +41,19 @@ class EntityExtractionResponse(BaseModel):
     suggested_questions: Optional[list] = Field(None, description="Perguntas sugeridas para campos faltantes")
     is_complete: Optional[bool] = Field(None, description="Indica se todos os campos foram preenchidos")
     error: Optional[str] = Field(None, description="Mensagem de erro, se houver")
-    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp da extração") 
+    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp da extração")
+
+
+class ValidationRequest(BaseModel):
+    """Schema para requisições de validação de dados"""
+    data: Dict[str, Any] = Field(..., description="Dados a serem validados e normalizados")
+    domain: str = Field(default="consulta", description="Domínio dos dados (consulta, cadastro, etc.)")
+
+
+class ValidationResponse(BaseModel):
+    """Schema para respostas de validação de dados"""
+    success: bool = Field(..., description="Indica se a validação foi bem-sucedida")
+    normalized_data: Dict[str, Any] = Field(..., description="Dados normalizados")
+    validation_errors: List[str] = Field(default_factory=list, description="Lista de erros de validação")
+    confidence_score: float = Field(..., description="Score de confiança da validação (0.0-1.0)")
+    timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp da validação") 

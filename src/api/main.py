@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequest, EntityExtractionResponse
+from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequest, EntityExtractionResponse, ValidationRequest, ValidationResponse
 from src.api.routers.system import router as system_router
 from src.core.openai_client import OpenAIClient
 from src.core.entity_extraction import EntityExtractor
+from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
 from src.core.logging import setup_logging
 from src.core.config import get_settings
 from datetime import datetime
@@ -225,4 +226,109 @@ async def extract_entities(request: Request) -> EntityExtractionResponse:
         return EntityExtractionResponse(
             success=False,
             error=f"Erro ao processar extração: {str(e)}"
+        )
+
+
+@app.post("/validate")
+async def validate_data(request: Request) -> ValidationResponse:
+    """Validation endpoint with detailed logging and error handling"""
+    logger.info("=== INÍCIO: Endpoint /validate ===")
+    
+    try:
+        # Log request details
+        logger.info(f"Content-Type: {request.headers.get('content-type', 'N/A')}")
+        logger.info(f"Content-Length: {request.headers.get('content-length', 'N/A')}")
+        
+        # Read raw body for debugging
+        body_bytes = await request.body()
+        logger.info(f"Raw body length: {len(body_bytes)} bytes")
+        
+        # Try to decode as UTF-8
+        try:
+            body_text = body_bytes.decode('utf-8')
+            logger.info(f"Body decoded as UTF-8: {body_text[:200]}...")
+        except UnicodeDecodeError as e:
+            logger.error(f"Erro de encoding UTF-8: {e}")
+            return ValidationResponse(
+                success=False,
+                normalized_data={},
+                validation_errors=[f"Invalid UTF-8 encoding in request body: {str(e)}"],
+                confidence_score=0.0
+            )
+        
+        # Parse JSON
+        try:
+            body_json = json.loads(body_text)
+            logger.info(f"JSON parsed successfully: {json.dumps(body_json, ensure_ascii=False)[:200]}...")
+        except json.JSONDecodeError as e:
+            logger.error(f"Erro ao fazer parse do JSON: {e}")
+            return ValidationResponse(
+                success=False,
+                normalized_data={},
+                validation_errors=[f"Invalid JSON format: {str(e)}"],
+                confidence_score=0.0
+            )
+        
+        # Validate with Pydantic
+        try:
+            validation_request = ValidationRequest(**body_json)
+            logger.info(f"ValidationRequest validado com sucesso: domain='{validation_request.domain}', data_keys={list(validation_request.data.keys()) if validation_request.data else None}")
+        except Exception as e:
+            logger.error(f"Erro na validação Pydantic: {e}")
+            return ValidationResponse(
+                success=False,
+                normalized_data={},
+                validation_errors=[f"Validation error: {str(e)}"],
+                confidence_score=0.0
+            )
+        
+        # Process validation based on domain
+        try:
+            if validation_request.domain == "consulta":
+                logger.info("Usando normalize_consulta_data para domínio 'consulta'")
+                result = normalize_consulta_data(validation_request.data)
+            else:
+                logger.info(f"Usando normalize_extracted_entities para domínio '{validation_request.domain}'")
+                result = normalize_extracted_entities(validation_request.data, validation_request.domain)
+            
+            logger.info("Validação realizada com sucesso")
+            logger.info(f"Result completo: {json.dumps(result, ensure_ascii=False, indent=2)}")
+            
+            # Extract data from result
+            normalized_data = result.get("normalized_data", {}) if validation_request.domain == "consulta" else result.get("normalized_entities", {})
+            validation_errors = result.get("validation_errors", [])
+            confidence_score = result.get("confidence_score", 0.0)
+            
+            # Determine success based on confidence score and errors
+            success = confidence_score > 0.0 and len(validation_errors) == 0
+            
+            response = ValidationResponse(
+                success=success,
+                normalized_data=normalized_data,
+                validation_errors=validation_errors,
+                confidence_score=confidence_score
+            )
+            
+            logger.info(f"Response criada: success={response.success}, confidence={response.confidence_score}, errors_count={len(response.validation_errors)}")
+            
+        except Exception as e:
+            logger.error(f"Erro durante a normalização: {e}")
+            return ValidationResponse(
+                success=False,
+                normalized_data={},
+                validation_errors=[f"Erro durante a normalização: {str(e)}"],
+                confidence_score=0.0
+            )
+        
+        logger.info("=== FIM: Endpoint /validate - Sucesso ===")
+        return response
+        
+    except Exception as e:
+        logger.error(f"Erro inesperado ao processar validação: {e}")
+        logger.error("=== FIM: Endpoint /validate - Erro ===")
+        return ValidationResponse(
+            success=False,
+            normalized_data={},
+            validation_errors=[f"Erro inesperado: {str(e)}"],
+            confidence_score=0.0
         )
