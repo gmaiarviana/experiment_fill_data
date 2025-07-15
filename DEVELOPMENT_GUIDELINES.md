@@ -209,6 +209,68 @@ Este documento define **como trabalhar** no projeto Data Structuring Agent. O **
 - Debuggar problemas arquiteturais
 - Manter consistência técnica"
 
+Padrões de Documentação
+Princípios de Atualização de Documentação
+Quando Atualizar:
+
+Ao final de cada funcionalidade implementada (não por tarefa)
+Quando novas tecnologias/bibliotecas são adicionadas ao stack
+Quando novos endpoints/comandos são criados
+Quando arquitetura ou estrutura de arquivos muda
+
+O Que Documentar:
+✅ README.md - Informações Técnicas:
+
+Stack tecnológico (bibliotecas, versões, decisões arquiteturais)
+Estrutura de arquivos significativa (novos módulos, responsabilidades)
+APIs e endpoints principais (com exemplos de uso)
+Comandos principais do sistema
+Configurações críticas e environment variables
+
+✅ ROADMAP.md - Status e Progresso:
+
+Marcar funcionalidades como ✅ IMPLEMENTADA
+Adicionar seção "Implementação Realizada" com detalhes técnicos
+Manter critérios de aceite como histórico
+Preservar estrutura de etapas e próximas funcionalidades
+
+❌ Não Documentar:
+
+Processo de implementação (como foi feito)
+Justificativas extensas de decisões técnicas
+Tutoriais de tecnologias básicas
+Detalhes que mudam frequentemente
+Informações óbvias para desenvolvedores
+
+Template de Prompts para Documentação
+Para README.md:
+Atualizar arquivo README.md seguindo padrões existentes
+- Na seção "Stack Tecnológica > [SUBSECAO]": adicionar [NOVA_TECNOLOGIA]
+- Na seção "Estrutura de Arquivos > [CAMINHO]/": adicionar [NOVOS_ARQUIVOS]
+- Na seção "APIs Principais > [CATEGORIA]": adicionar [NOVO_ENDPOINT]
+- Manter formato existente, não alterar outras seções
+- Adicionar apenas informações técnicas relevantes para Claude futuro
+- NÃO documentar detalhes óbvios ou processo de implementação
+Para ROADMAP.md:
+Atualizar arquivo ROADMAP.md seguindo padrões existentes
+- Marcar "Funcionalidade X.Y: [NOME]" como ✅ IMPLEMENTADA
+- Adicionar seção "Implementação Realizada" com detalhes técnicos
+- Manter estrutura e formato existente da seção "ETAPA X"
+- Preservar todas as outras funcionalidades e etapas inalteradas
+- Adicionar apenas status de conclusão e resultado técnico
+Critérios de Qualidade para Documentação
+Teste de Relevância:
+
+"Claude futuro precisaria dessa informação para integrar nova funcionalidade?"
+"Essa informação ajuda a entender decisões arquiteturais tomadas?"
+"Essa informação é estável e não mudará frequentemente?"
+
+Teste de Consistência:
+
+Segue formato das seções existentes?
+Usa terminologia consistente com resto da documentação?
+Mantém nível de detalhe similar às outras entradas?
+
 ## Separação de Responsabilidades na Documentação
 
 ### **README.md** - Arquitetura & Como Usar
