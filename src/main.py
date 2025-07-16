@@ -1,254 +1,163 @@
-import asyncio
-import json
+"""
+Main entry point for the Data Structuring Agent.
+
+This module provides CLI commands for testing and development.
+"""
+
 import sys
+import json
+import logging
 from typing import Optional
-from src.core.entity_extraction import EntityExtractor
-from src.core.data_normalizer import normalize_consulta_data
-from src.core.reasoning_engine import ReasoningEngine
+
+from .core.config import get_settings
+from .core.logging import setup_logging
+from .core.entity_extraction import EntityExtractor
+from .core.validators import validate_brazilian_phone, parse_relative_date, normalize_name, calculate_validation_confidence
+from .core.data_normalizer import normalize_consulta_data
+from .core.reasoning_engine import ReasoningEngine
+from .core.database import create_tables, test_connection, get_engine
+
+# Setup logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
-async def extract_command(text: str) -> None:
-    """
-    Comando CLI para extrair entidades de texto natural.
-    
-    Args:
-        text (str): Texto em linguagem natural para extração
-    """
-    extractor = EntityExtractor()
-    
-    print(f"📝 Extraindo entidades de: {text}")
-    print("🔄 Processando...")
-    
+def test_entity_extraction(text: str) -> None:
+    """Test entity extraction from natural language text."""
     try:
-        result = await extractor.extract_consulta_entities(text)
+        extractor = EntityExtractor()
+        result = extractor.extract_entities(text)
         
-        if result["success"]:
-            print("✅ Extração bem-sucedida!")
-            print(f"📊 Confidence Score: {result['confidence_score']}")
-            print(f"📋 Dados Extraídos:")
-            print(json.dumps(result["extracted_data"], indent=2, ensure_ascii=False))
-            
-            if result["missing_fields"]:
-                print(f"❓ Campos faltantes: {', '.join(result['missing_fields'])}")
-                if result.get("suggested_questions"):
-                    print("💡 Perguntas sugeridas:")
-                    for i, question in enumerate(result["suggested_questions"], 1):
-                        print(f"   {i}. {question}")
-            else:
-                print("✅ Todos os campos foram preenchidos!")
-        else:
-            print("❌ Erro na extração:")
-            print(f"   {result['error']}")
-            if "raw_response" in result:
-                print(f"   Resposta bruta: {result['raw_response']}")
-                
+        print("=== Entity Extraction Test ===")
+        print(f"Input: {text}")
+        print(f"Result: {json.dumps(result, indent=2, ensure_ascii=False)}")
+        
     except Exception as e:
-        print(f"❌ Erro inesperado: {str(e)}")
+        logger.error(f"Entity extraction test failed: {e}")
+        print(f"Error: {e}")
 
 
-def validate_command(json_data: str) -> None:
-    """
-    Comando CLI para validar e normalizar dados JSON.
-    
-    Args:
-        json_data (str): Dados JSON como string para validação
-    """
-    print(f"🔍 Validando dados: {json_data}")
-    print("🔄 Processando...")
-    
+def test_validation(data_json: str) -> None:
+    """Test data validation and normalization."""
     try:
-        # Parse JSON
-        try:
-            data = json.loads(json_data)
-        except json.JSONDecodeError as e:
-            print(f"❌ Erro: JSON inválido - {str(e)}")
-            return
-        
-        # Check if data is empty
-        if not data:
-            print("❌ Erro: Dados vazios")
-            return
+        # Parse JSON input
+        data = json.loads(data_json)
         
         # Validate and normalize data
-        result = normalize_consulta_data(data)
+        validation_result = {}
+        normalized_data = normalize_consulta_data(data)
         
-        # Display results
-        print("\n" + "="*50)
-        print("📋 RESULTADO DA VALIDAÇÃO")
-        print("="*50)
+        # Test phone validation if present
+        if 'phone' in data and data['phone']:
+            validation_result['phone'] = validate_brazilian_phone(str(data['phone']))
         
-        # Original data
-        print(f"📥 Dados Originais:")
-        print(json.dumps(result.get("original_data", {}), indent=2, ensure_ascii=False))
+        # Test date parsing if present
+        if 'date' in data and data['date']:
+            validation_result['date'] = parse_relative_date(str(data['date']))
         
-        # Normalized data
-        print(f"\n📤 Dados Normalizados:")
-        print(json.dumps(result.get("normalized_data", {}), indent=2, ensure_ascii=False))
+        # Test name normalization if present
+        if 'name' in data and data['name']:
+            validation_result['name'] = normalize_name(str(data['name']))
         
-        # Confidence score
-        confidence = result.get("confidence_score", 0.0)
-        print(f"\n📊 Confidence Score: {confidence:.2f}")
+        # Calculate confidence
+        validation_result['confidence'] = calculate_validation_confidence(data)
         
-        # Validation errors
-        errors = result.get("validation_errors", [])
-        if errors:
-            print(f"\n❌ Erros de Validação:")
-            for i, error in enumerate(errors, 1):
-                print(f"   {i}. {error}")
-        else:
-            print(f"\n✅ Nenhum erro de validação encontrado!")
+        print("=== Data Validation & Normalization Test ===")
+        print(f"Input: {json.dumps(data, indent=2, ensure_ascii=False)}")
+        print(f"Validation: {json.dumps(validation_result, indent=2, ensure_ascii=False)}")
+        print(f"Normalized: {json.dumps(normalized_data, indent=2, ensure_ascii=False)}")
         
-        # Success summary
-        if confidence > 0.0 and not errors:
-            print(f"\n🎉 Validação bem-sucedida!")
-        else:
-            print(f"\n⚠️  Validação com problemas detectados")
-        
-        print("="*50)
-        
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON input: {e}")
+        print(f"Error: Invalid JSON - {e}")
     except Exception as e:
-        print(f"❌ Erro inesperado: {str(e)}")
+        logger.error(f"Validation test failed: {e}")
+        print(f"Error: {e}")
 
 
-async def reason_command(text: str, context_json: str = None) -> None:
-    """
-    Comando CLI para testar o motor de raciocínio.
-    
-    Args:
-        text (str): Mensagem para processar
-        context_json (str, optional): Contexto da sessão como JSON
-    """
-    engine = ReasoningEngine()
-    
-    # Parse context if provided
-    context = None
-    if context_json:
-        try:
-            context = json.loads(context_json)
-        except json.JSONDecodeError as e:
-            print(f"❌ Erro: Contexto JSON inválido - {str(e)}")
-            return
-    
-    print(f"🧠 Processando mensagem: {text}")
-    if context:
-        print(f"📋 Contexto: {json.dumps(context, indent=2, ensure_ascii=False)}")
-    print("🔄 Executando loop Think → Extract → Validate → Act...")
-    
+def test_reasoning(text: str) -> None:
+    """Test reasoning engine with partial information."""
     try:
-        result = await engine.process_message(text, context)
+        reasoning_engine = ReasoningEngine()
+        result = reasoning_engine.process_message(text)
         
-        print("\n" + "="*60)
-        print("🧠 RESULTADO DO REASONING ENGINE")
-        print("="*60)
-        
-        # Action
-        action = result.get("action", "unknown")
-        print(f"🎯 Ação: {action}")
-        
-        # Response
-        response = result.get("response", "")
-        if response:
-            print(f"💬 Resposta: {response}")
-        
-        # Data
-        data = result.get("data", {})
-        if data:
-            print(f"📊 Dados Extraídos:")
-            print(json.dumps(data, indent=2, ensure_ascii=False))
-        
-        # Next questions
-        next_questions = result.get("next_questions", [])
-        if next_questions:
-            print(f"❓ Próximas Perguntas:")
-            for i, question in enumerate(next_questions, 1):
-                print(f"   {i}. {question}")
-        
-        # Confidence
-        confidence = result.get("confidence", 0.0)
-        print(f"📈 Confidence: {confidence:.2f}")
-        
-        # Error handling
-        if action == "error":
-            error = result.get("error", "")
-            if error:
-                print(f"❌ Erro: {error}")
-        
-        # Context summary
-        if context:
-            summary = engine.get_context_summary(context)
-            print(f"\n📋 Resumo do Contexto:")
-            print(f"   Mensagens: {summary['total_messages']}")
-            print(f"   Campos extraídos: {', '.join(summary['extracted_fields'])}")
-            print(f"   Completude: {summary['data_completeness']:.2f}")
-            print(f"   Última ação: {summary['last_action']}")
-        
-        print("="*60)
+        print("=== Reasoning Engine Test ===")
+        print(f"Input: {text}")
+        print(f"Result: {json.dumps(result, indent=2, ensure_ascii=False)}")
         
     except Exception as e:
-        print(f"❌ Erro inesperado: {str(e)}")
+        logger.error(f"Reasoning test failed: {e}")
+        print(f"Error: {e}")
 
 
-def print_help():
-    """Exibe ajuda dos comandos disponíveis."""
-    print("🎯 Data Structuring Agent - CLI Tools")
-    print("")
-    print("Comandos disponíveis:")
-    print("  extract <texto>  - Extrai entidades de texto natural")
-    print("  validate <json>  - Valida e normaliza dados JSON")
-    print("  reason <texto> [contexto] - Testa o motor de raciocínio")
-    print("")
-    print("Exemplos:")
-    print('  python -m src.main extract "Quero agendar consulta para João Silva"')
-    print('  python -m src.main extract "João quer consulta amanhã às 14h, telefone 11999887766"')
-    print('  python -m src.main validate \'{"nome": "joao", "telefone": "11999887766"}\'')
-    print('  python -m src.main validate \'{"nome": "Maria Silva", "email": "maria@email.com", "data": "amanhã"}\'')
-    print('  python -m src.main reason "Quero agendar consulta para João Silva"')
-    print('  python -m src.main reason "Sim, confirma" \'{"extracted_data": {"name": "João Silva"}}\'')
+def test_database() -> None:
+    """Test database connection and table creation."""
+    try:
+        print("=== Database Connection Test ===")
+        
+        # Test connection
+        if test_connection():
+            print("✅ Database connection successful")
+        else:
+            print("❌ Database connection failed")
+            return
+        
+        # Test table creation
+        if create_tables():
+            print("✅ Database tables created successfully")
+        else:
+            print("❌ Database table creation failed")
+            
+    except Exception as e:
+        logger.error(f"Database test failed: {e}")
+        print(f"Error: {e}")
 
 
-async def main():
-    """Função principal do CLI."""
+def main():
+    """Main CLI entry point."""
     if len(sys.argv) < 2:
-        print_help()
+        print("Usage:")
+        print("  python -m src.main extract <text>")
+        print("  python -m src.main validate <json_data>")
+        print("  python -m src.main reason <text>")
+        print("  python -m src.main setup-db")
         return
     
-    command = sys.argv[1].lower()
+    command = sys.argv[1]
     
-    if command == "extract":
-        if len(sys.argv) < 3:
-            print("❌ Erro: Texto para extração é obrigatório")
-            print('Uso: python -m src.main extract "seu texto aqui"')
-            return
-        
-        text = " ".join(sys.argv[2:])
-        await extract_command(text)
-    
-    elif command == "validate":
-        if len(sys.argv) < 3:
-            print("❌ Erro: Dados JSON para validação são obrigatórios")
-            print('Uso: python -m src.main validate \'{"campo": "valor"}\'')
-            return
-        
-        json_data = " ".join(sys.argv[2:])
-        validate_command(json_data)
-    
-    elif command == "reason":
-        if len(sys.argv) < 3:
-            print("❌ Erro: Mensagem para processamento é obrigatória")
-            print('Uso: python -m src.main reason "sua mensagem aqui" [contexto_json]')
-            return
-        
-        text = sys.argv[2]
-        context_json = sys.argv[3] if len(sys.argv) > 3 else None
-        await reason_command(text, context_json)
-    
-    elif command in ["help", "-h", "--help"]:
-        print_help()
-    
-    else:
-        print(f"❌ Comando desconhecido: {command}")
-        print_help()
+    try:
+        if command == "extract":
+            if len(sys.argv) < 3:
+                print("Error: Text required for extraction")
+                return
+            text = sys.argv[2]
+            test_entity_extraction(text)
+            
+        elif command == "validate":
+            if len(sys.argv) < 3:
+                print("Error: JSON data required for validation")
+                return
+            data_json = sys.argv[2]
+            test_validation(data_json)
+            
+        elif command == "reason":
+            if len(sys.argv) < 3:
+                print("Error: Text required for reasoning")
+                return
+            text = sys.argv[2]
+            test_reasoning(text)
+            
+        elif command == "setup-db":
+            test_database()
+            
+        else:
+            print(f"Unknown command: {command}")
+            print("Available commands: extract, validate, reason, setup-db")
+            
+    except Exception as e:
+        logger.error(f"CLI execution failed: {e}")
+        print(f"Error: {e}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

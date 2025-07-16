@@ -117,8 +117,7 @@ def create_tables() -> bool:
         logger.info("Creating database tables...")
         
         # Import models here to avoid circular imports
-        # This will be expanded as models are created
-        # from .models import Consulta, ExtractionLog, ChatSession
+        from src.models import Consulta, ExtractionLog, ChatSession
         
         # Create all tables
         Base.metadata.create_all(bind=engine)
