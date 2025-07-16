@@ -16,6 +16,7 @@ from .core.validators import validate_brazilian_phone, parse_relative_date, norm
 from .core.data_normalizer import normalize_consulta_data
 from .core.reasoning_engine import ReasoningEngine
 from .core.database import create_tables, test_connection, get_engine
+from sqlalchemy import text
 
 # Setup logging
 setup_logging()
@@ -102,15 +103,101 @@ def test_database() -> None:
             print("❌ Database connection failed")
             return
         
+        # Get expected tables from models
+        from src.models import Consulta, ExtractionLog, ChatSession
+        expected_tables = ['consultas', 'extraction_logs', 'chat_sessions']
+        print(f"📋 Expected tables: {', '.join(expected_tables)}")
+        
+        # Check current tables before creation
+        print("\n=== Checking Existing Tables ===")
+        try:
+            engine = get_engine()
+            with engine.connect() as connection:
+                result = connection.execute(text(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+                ))
+                existing_tables = [row[0] for row in result.fetchall()]
+                our_existing_tables = [table for table in existing_tables if table in expected_tables]
+                
+                print(f"📊 Existing tables in database: {len(existing_tables)} total")
+                print(f"📊 Our tables already exist: {len(our_existing_tables)}/{len(expected_tables)}")
+                
+                if our_existing_tables:
+                    print("✅ Existing tables:")
+                    for table in our_existing_tables:
+                        print(f"   - {table}")
+                
+                if len(our_existing_tables) == len(expected_tables):
+                    print("🎉 All expected tables already exist!")
+                    return
+                    
+        except Exception as e:
+            logger.error(f"Failed to check existing tables: {e}")
+            print(f"❌ Error checking existing tables: {e}")
+        
         # Test table creation
-        if create_tables():
-            print("✅ Database tables created successfully")
-        else:
-            print("❌ Database table creation failed")
+        print("\n=== Creating Database Tables ===")
+        try:
+            if create_tables():
+                print("✅ Database tables created successfully")
+            else:
+                print("❌ Database table creation failed")
+                return
+        except Exception as e:
+            error_msg = str(e)
+            if "permission denied" in error_msg.lower() or "insufficientprivilege" in error_msg.lower():
+                print("❌ Permission denied: Cannot create tables")
+                print("💡 This usually means:")
+                print("   - Database user lacks CREATE privileges")
+                print("   - Schema permissions are not set correctly")
+                print("   - Try running as database owner or with elevated privileges")
+                print(f"🔍 Error details: {error_msg}")
+                return
+            else:
+                raise e
+        
+        # Verify tables were created
+        print("\n=== Verifying Created Tables ===")
+        try:
+            engine = get_engine()
+            with engine.connect() as connection:
+                # Query to get all tables in public schema (PostgreSQL)
+                result = connection.execute(text(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+                ))
+                created_tables = [row[0] for row in result.fetchall()]
+                
+                # Filter to only our expected tables
+                our_tables = [table for table in created_tables if table in expected_tables]
+                
+                print(f"📊 Tables found in database: {len(created_tables)} total")
+                print(f"📊 Our tables created: {len(our_tables)}/{len(expected_tables)}")
+                
+                if our_tables:
+                    print("✅ Created tables:")
+                    for table in our_tables:
+                        print(f"   - {table}")
+                
+                missing_tables = [table for table in expected_tables if table not in our_tables]
+                if missing_tables:
+                    print("❌ Missing tables:")
+                    for table in missing_tables:
+                        print(f"   - {table}")
+                
+                if len(our_tables) == len(expected_tables):
+                    print("🎉 All expected tables created successfully!")
+                else:
+                    print("⚠️  Some tables may not have been created properly")
+                    
+        except Exception as e:
+            logger.error(f"Failed to verify created tables: {e}")
+            print(f"❌ Error verifying tables: {e}")
             
     except Exception as e:
         logger.error(f"Database test failed: {e}")
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
+        print("💡 Make sure PostgreSQL is running and accessible")
+        print("💡 Check database permissions and user privileges")
 
 
 def main():
