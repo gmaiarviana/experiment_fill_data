@@ -98,13 +98,23 @@ API Integration: Endpoint /chat/message expandido com ReasoningEngine
 CLI Command: python -m src.main reason para debugging do reasoning loop
 N8N Integration: Workflow funcionalidade_3_3.json com webhook operacional
 
-### **Funcionalidade 3.4: PostgreSQL Schema Setup**
-**Critérios de Aceite:**
-- Schema consultas + extraction_logs + chat_sessions criado
-- Database migrations para criação automática de tabelas
-- Models SQLAlchemy para entidades do domínio
-- **Teste CLI**: `python -m src.main setup-db` → tabelas criadas
-- **Teste direto**: Conexão PostgreSQL funcional via Docker
+### **Funcionalidade 3.4: PostgreSQL Schema Setup - ✅ IMPLEMENTADA**
+
+**Critérios de Aceite Atingidos:**
+- ✅ **Schema consultas + extraction_logs + chat_sessions criado**: Tabelas criadas com campos completos conforme README
+- ✅ **Database migrations para criação automática**: SQLAlchemy Base.metadata.create_all() funcionando  
+- ✅ **Models SQLAlchemy para entidades do domínio**: Consulta, ChatSession, ExtractionLog implementados
+- ✅ **Teste CLI funcionando**: `python -m src.main setup-db` → tabelas criadas (3/3)
+- ✅ **Conexão PostgreSQL funcional**: Via Docker container postgres:5432 testada e validada
+
+**Implementação Realizada:**
+- **Database Connection**: `src/core/database.py` - Engine SQLAlchemy + session factory + connection management
+- **SQLAlchemy Models**: `src/models/` - Consulta, ChatSession, ExtractionLog com campos completos
+- **Schema Creation**: Script `setup-db` com verificação de integridade e validação pós-criação
+- **Schema Testing**: `tests/test_schema.py` - Testes completos de integridade, inserção e relacionamentos
+- **CLI Integration**: Comando `python -m src.main setup-db` para criação e validação automática
+
+**Resultado**: Schema PostgreSQL 100% funcional com 3 tabelas criadas, testadas e validadas conforme especificação do README.
 
 ### **Funcionalidade 3.5: Data Persistence**
 **Critérios de Aceite:**
