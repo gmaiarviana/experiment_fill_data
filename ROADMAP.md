@@ -40,113 +40,25 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## 🎯 **ETAPA 3: EXTRAÇÃO INTELIGENTE - EM DESENVOLVIMENTO**
+## ✅ **ETAPA 3: EXTRAÇÃO INTELIGENTE - CONCLUÍDA**
 
 **Objetivo**: Sistema extrai dados estruturados de conversas naturais usando abordagem híbrida LLM + código, com persistência automática e framework extensível.
 
-### **Funcionalidade 3.1: LLM Entity Extraction - ✅ IMPLEMENTADA**
+**Funcionalidades Implementadas:**
+- ✅ **LLM Entity Extraction**: OpenAI function calling para extração de entidades de linguagem natural
+- ✅ **Smart Validation & Normalization**: Validação e normalização automática de dados brasileiros
+- ✅ **Intelligent Reasoning Loop**: Loop Think → Extract → Validate → Act com context awareness
+- ✅ **PostgreSQL Schema Setup**: Schema completo com 3 tabelas (consultas, extraction_logs, chat_sessions)
+- ✅ **Data Persistence**: Repository pattern com persistência automática via ConsultationService
+- ✅ **Complete Chat Integration**: Sistema conversacional completo com session management e persistência
 
-**Critérios de Aceite Atingidos:**
-- ✅ **OpenAI function calling integrado**: Cliente OpenAI com function calling implementado
-- ✅ **Sistema extrai entidades**: nome, telefone, data, horário, tipo_consulta de linguagem natural  
-- ✅ **Response estruturado com confidence score**: Score baseado em completude (0.0-1.0)
-- ✅ **Identificação automática de campos faltantes**: Sistema detecta e sugere perguntas
-- ✅ **Teste CLI funcionando**: `python -m src.main extract "texto natural"` → JSON estruturado
-- ✅ **Teste API funcionando**: Endpoint `/extract/entities` operacional
+**Resultado Alcançado**: Sistema conversacional que converte linguagem natural em dados estruturados automaticamente, persiste registros organizados e mantém conversação natural com context awareness.
 
-**Implementação Realizada:**
-- **EntityExtractor**: `src/core/entity_extraction.py` - Extração especializada para consultas médicas
-- **CLI Command**: `src/main.py` - Sistema de linha de comando para testes
-- **HTTP Endpoints**: `/extract/entities` e `/chat/message` com validação completa  
-- **Schemas Pydantic**: Validação estruturada em `src/api/schemas/chat.py`
 
-**Resultado**: Sistema converte linguagem natural em dados estruturados com confidence score de até 100%.
-
-### **Funcionalidade 3.2: Smart Validation & Normalization - ✅ IMPLEMENTADA**
-**Critérios de Aceite Atingidos:**
-- ✅ Validação de telefones brasileiros (formato correto)
-- ✅ Parsing de datas relativas ("amanhã", "próxima sexta") → ISO format
-- ✅ Normalização automática (capitalização nomes, formatação telefones)
-- ✅ Confidence scoring baseado em qualidade da validação
-- ✅ **Teste CLI**: `python -m src.main validate "dados_json"` → dados normalizados
-- ✅ **Teste direto**: Comandos PowerShell testam validação individual
-
-**Implementação Realizada:**
-- **Validators**: `src/core/validators.py` - Validação de dados brasileiros (CPF, telefone, CEP)
-- **Data Normalizer**: `src/core/data_normalizer.py` - Normalização e formatação automática
-- **HTTP Endpoint**: `POST /validate` - Validação de dados estruturados antes da persistência
-- **Date Parsing**: Suporte a datas relativas em português via python-dateutil
-- **Phone Validation**: Validação específica para formatos brasileiros
-- **Schemas Pydantic**: Validação integrada com normalização automática
-
-**Resultado**: Sistema valida e normaliza dados automaticamente com alta precisão para contexto brasileiro.
-
-### **Funcionalidade 3.3: Intelligent Reasoning Loop - ✅ IMPLEMENTADA**
-**Critérios de Aceite:**
-Critérios de Aceite:
-
-✅ Loop Think → Extract → Validate → Act implementado
-✅ Sistema gera perguntas específicas para dados faltantes
-✅ Context awareness: lembra informações durante sessão
-✅ Decisão automática: extrair vs perguntar vs confirmar
-✅ Teste CLI: python -m src.main reason "texto parcial" → próxima ação
-✅ Teste API: Chat conversacional completo funcionando
-
-Implementação Realizada:
-
-ReasoningEngine: Loop Think → Extract → Validate → Act com OpenAI function calling
-Context Management: Session management em memória com merge inteligente de dados
-Smart Decisions: Analisa contexto e histórico para decidir próxima ação automaticamente
-API Integration: Endpoint /chat/message expandido com ReasoningEngine
-CLI Command: python -m src.main reason para debugging do reasoning loop
-
-### **Funcionalidade 3.4: PostgreSQL Schema Setup - ✅ IMPLEMENTADA**
-
-**Critérios de Aceite Atingidos:**
-- ✅ **Schema consultas + extraction_logs + chat_sessions criado**: Tabelas criadas com campos completos conforme README
-- ✅ **Database migrations para criação automática**: SQLAlchemy Base.metadata.create_all() funcionando  
-- ✅ **Models SQLAlchemy para entidades do domínio**: Consulta, ChatSession, ExtractionLog implementados
-- ✅ **Teste CLI funcionando**: `python -m src.main setup-db` → tabelas criadas (3/3)
-- ✅ **Conexão PostgreSQL funcional**: Via Docker container postgres:5432 testada e validada
-
-**Implementação Realizada:**
-- **Database Connection**: `src/core/database.py` - Engine SQLAlchemy + session factory + connection management
-- **SQLAlchemy Models**: `src/models/` - Consulta, ChatSession, ExtractionLog com campos completos
-- **Schema Creation**: Script `setup-db` com verificação de integridade e validação pós-criação
-- **Schema Testing**: `tests/test_schema.py` - Testes completos de integridade, inserção e relacionamentos
-- **CLI Integration**: Comando `python -m src.main setup-db` para criação e validação automática
-
-**Resultado**: Schema PostgreSQL 100% funcional com 3 tabelas criadas, testadas e validadas conforme especificação do README.
-
-### **Funcionalidade 3.5: Data Persistence**
-**Critérios de Aceite:**
-- Repository pattern para CRUD operations
-- Dados extraídos são persistidos automaticamente
-- PostgREST integration para query direta dos dados
-- **Teste CLI**: `python -m src.main persist "dados_json"` → ID do registro
-- **Teste PostgREST**: `Invoke-WebRequest http://localhost:3000/consultas` → lista registros
-
-### **Funcionalidade 3.6: Complete Chat Integration**
-**Critérios de Aceite:**
-- Endpoint `/chat/message` evolui para usar extração + persistência
-- Session management com context entre mensagens
-- Response inclui: resposta conversacional + dados estruturados + status
-- Visualização será implementada na interface React da Etapa 4
-- **Teste API**: Chat interface + visualização dados estruturados
-- **Teste CLI**: Conversa completa via linha de comando
-
-**Arquitetura Técnica:**
-- **Abordagem Híbrida**: LLM para naturalidade + código para validação
-- **Framework Extensível**: Estrutura genérica para novos domínios (domains/)
-- **Error Handling**: Confidence threshold + fallback conversacional
-- **Performance**: Function calling otimizado + validação local
-- **Persistência**: PostgreSQL + PostgREST + Repository pattern
-
-**Resultado Esperado**: Sistema converte linguagem natural em dados estruturados automaticamente, persiste registros organizados e mantém conversação natural.
 
 ---
 
-## 🎯 **ETAPA 4: INTERFACE CONVERSACIONAL - PLANEJADA**
+## 🎯 **ETAPA 4: INTERFACE CONVERSACIONAL - PRÓXIMA ETAPA**
 
 **Objetivo**: Interface visual limpa para conversação fluida com feedback em tempo real dos dados extraídos.
 

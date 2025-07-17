@@ -4,6 +4,8 @@
 
 Sistema conversacional que transforma **conversas naturais** em **dados estruturados**. O usuário conversa naturalmente (como WhatsApp), e o sistema automaticamente extrai, organiza e armazena informações em registros estruturados.
 
+
+
 ### Conceito Central
 - **Input**: Conversa natural e fluida
 - **Processamento**: Extração inteligente de entidades e intenções via LLM
@@ -364,27 +366,28 @@ docker-compose up -d
 
 ### **Teste de Funcionalidade**
 ```bash
-# Teste chat conversacional
+# Teste chat conversacional completo
 curl -X POST "http://localhost:8000/chat/message" \
   -H "Content-Type: application/json" \
-  -d '{"message": "Olá, como você está?"}'
+  -d '{"message": "Olá, quero marcar uma consulta para João Silva amanhã às 14h"}'
 
 # Verificar dados estruturados criados
-curl "http://localhost:3000/consultas"
+curl "http://localhost:8000/consultations"
+
+# Teste de extração de entidades
+curl -X POST "http://localhost:8000/extract/entities" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Maria Santos, telefone 11987654321, consulta de cardiologia"}'
 
 ### **Comandos Principais**
 ```bash
-# Extração de entidades
-python -m src.main extract "Quero agendar consulta para João Silva"
-python -m src.main extract "João quer consulta amanhã às 14h, telefone 11999887766"
+# Setup do banco de dados
+docker exec api python -m src.main setup-db
 
-# Validação e normalização
-python -m src.main validate '{"nome": "joao", "telefone": "11999887766"}'
-python -m src.main validate '{"nome": "Maria Silva", "email": "maria@email.com", "data": "amanhã"}'
-
-# Motor de raciocínio
-python -m src.main reason "Quero agendar consulta para João Silva"
-python -m src.main reason "Sim, confirma" '{"extracted_data": {"name": "João Silva"}}'
+# Testes via API (recomendado)
+curl -X POST "http://localhost:8000/chat/message" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Olá, quero marcar uma consulta"}'
 ```
 
 ---
@@ -393,15 +396,14 @@ python -m src.main reason "Sim, confirma" '{"extracted_data": {"name": "João Si
 
 ### **Chat Conversacional**
 - `POST /chat/message` - Enviar mensagem + receber resposta estruturada com extração automática
-- `GET /chat/sessions/{id}` - Recuperar contexto de sessão
-- `DELETE /chat/sessions/{id}` - Limpar sessão
-- `POST /sessions` - Criar nova sessão de conversa
+- `GET /sessions/{session_id}` - Recuperar contexto de sessão
+- `DELETE /sessions/{session_id}` - Limpar sessão
+- `GET /sessions` - Listar todas as sessões ativas
 
 ### **Dados Estruturados**
-- `GET /data/consultas` - Listar consultas criadas
-- `GET /data/consultas/{id}` - Detalhes de consulta específica
-- `PUT /data/consultas/{id}` - Atualizar consulta (correções)
-- `DELETE /data/consultas/{id}` - Cancelar consulta
+- `GET /consultations` - Listar consultas criadas
+- `GET /consultations/{id}` - Detalhes de consulta específica
+- `POST /extract/entities` - Extrair entidades de texto natural
 - `POST /validate` - Validar dados estruturados antes da persistência
 
 ### **Sistema e Debug**
