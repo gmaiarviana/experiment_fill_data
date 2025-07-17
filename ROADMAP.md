@@ -76,7 +76,7 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - Integração CORS ajustada para porta 3001
 - Testes manuais realizados com sucesso
 
-### **Funcionalidade 4.2: Painel de Debug do Reasoning Loop**
+### ✅ Funcionalidade 4.2: Painel de Debug do Reasoning Loop
 **Critérios de Aceite:**
 - Painel lateral mostrando os 4 passos do reasoning (Think → Extract → Validate → Act) em tempo real
 - Logs detalhados com timestamps de cada etapa do processo
@@ -84,16 +84,22 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - Exibição apenas do último ciclo completo de reasoning (sem persistência histórica)
 - Detalhes relevantes incluídos: entidades extraídas, campos faltantes, ações tomadas
 
-### **Funcionalidade 4.3: Painel de Dados Estruturados**
-**Critérios de Aceite:**
-- Painel lateral mostrando dados sendo extraídos em tempo real
+**Status:** ✅ IMPLEMENTADA
+- Painel Reasoning Loop Debug implementado em React com integração ao backend
+- Exibe os 4 passos do reasoning, status, timestamps e detalhes do ciclo atual
+- Integração em tempo real com o endpoint /chat/message
+- Transparência total do reasoning loop para debugging e demonstração
+
+### Funcionalidade 4.3: Painel de Dados Estruturados
+**Critérios de Aceite Sugeridos:**
+- Painel lateral mostrando dados extraídos em tempo real
 - Campos obrigatórios vs opcionais claramente identificados
 - Confidence score visual (0-100%) com indicadores de cor para cada campo
 - Status de validação (✓/❌/⏳) para cada campo extraído
 - Exibição apenas de dados finais normalizados (sem dados brutos)
 
-### **Funcionalidade 4.4: Integração Backend e Polling Inteligente**
-**Critérios de Aceite:**
+### Funcionalidade 4.4: Integração Backend e Polling Inteligente
+**Critérios de Aceite Sugeridos:**
 - Integração HTTP REST simples com FastAPI (sem WebSocket inicial)
 - Polling inteligente: 500ms durante processamento, 2s em idle
 - Session management básico com session_id automático

@@ -410,11 +410,17 @@ class ReasoningEngine:
                         
                         logger.debug(f"Dados validados: {final_data}, Confidence: {combined_confidence}")
                         
-                        # Se tem erros de validação, pergunta para corrigir
+                        # Se tem erros de validação, pergunta para corrigir de forma mais amigável
                         if validation_errors:
+                            # Cria resposta mais amigável sobre os problemas
+                            extracted_summary = self._summarize_extracted_data(final_data)
+                            validation_issues = self._format_validation_errors(validation_errors)
+                            
+                            response = f"Ótimo! {extracted_summary}. Mas encontrei alguns problemas: {validation_issues}. Pode corrigir?"
+                            
                             return {
                                 "action": "ask",
-                                "response": "Encontrei alguns problemas nos dados. Pode corrigir?",
+                                "response": response,
                                 "next_questions": [f"Corrija: {error}" for error in validation_errors[:2]],
                                 "data": final_data,
                                 "confidence": combined_confidence,
@@ -433,9 +439,15 @@ class ReasoningEngine:
                         # Se não está completo, pergunta pelos campos faltantes
                         missing_fields = self._get_missing_fields(final_data)
                         if missing_fields:
+                            # Cria resposta mais específica sobre o que já tem e o que falta
+                            extracted_summary = self._summarize_extracted_data(final_data)
+                            missing_summary = ", ".join([self._get_field_display_name(field) for field in missing_fields])
+                            
+                            response = f"Ótimo! {extracted_summary}. Agora preciso de: {missing_summary}."
+                            
                             return {
                                 "action": "ask",
-                                "response": "Ótimo! Agora preciso de mais algumas informações.",
+                                "response": response,
                                 "next_questions": self.get_missing_fields_questions(missing_fields),
                                 "data": final_data,
                                 "confidence": combined_confidence
@@ -607,26 +619,26 @@ class ReasoningEngine:
     def is_data_complete(self, data: Dict[str, Any]) -> bool:
         """
         Verifica se os dados estão completos para um agendamento.
-        Considera 3+ campos como completo.
+        Exige todos os campos obrigatórios: nome, telefone, data, horário.
+        Tipo de consulta é opcional.
         
         Args:
             data (Dict[str, Any]): Dados para verificar
             
         Returns:
-            bool: True se os dados estão completos (3+ campos válidos)
+            bool: True se todos os campos obrigatórios estão preenchidos
         """
-        # Campos principais para agendamento
-        main_fields = ["name", "phone", "consulta_date", "horario", "tipo_consulta"]
+        # Campos obrigatórios para agendamento
+        required_fields = ["name", "phone", "consulta_date", "horario"]
         
-        # Conta campos válidos (presentes e não vazios)
-        valid_fields = 0
-        for field in main_fields:
+        # Verifica se todos os campos obrigatórios estão preenchidos
+        for field in required_fields:
             value = data.get(field, "")
-            if value and str(value).strip() != "":
-                valid_fields += 1
+            if not value or str(value).strip() == "":
+                return False
         
-        # Considera completo se tem 3+ campos válidos
-        return valid_fields >= 3
+        # Se chegou até aqui, todos os campos obrigatórios estão preenchidos
+        return True
     
     def get_missing_fields_questions(self, missing_fields: List[str]) -> List[str]:
         """
@@ -663,19 +675,19 @@ class ReasoningEngine:
     
     def _get_missing_fields(self, data: Dict[str, Any]) -> List[str]:
         """
-        Identifica campos faltantes nos dados.
-        Considera campos principais para completude.
+        Identifica campos obrigatórios faltantes nos dados.
+        Considera apenas campos obrigatórios: nome, telefone, data, horário.
         
         Args:
             data (Dict[str, Any]): Dados para verificar
             
         Returns:
-            List[str]: Lista de campos faltantes
+            List[str]: Lista de campos obrigatórios faltantes
         """
-        main_fields = ["name", "phone", "consulta_date", "horario", "tipo_consulta"]
+        required_fields = ["name", "phone", "consulta_date", "horario"]
         missing = []
         
-        for field in main_fields:
+        for field in required_fields:
             value = data.get(field, "")
             if not value or str(value).strip() == "":
                 missing.append(field)
@@ -754,36 +766,93 @@ class ReasoningEngine:
             logger.error(f"Erro ao calcular duração da sessão: {str(e)}")
             return "N/A"
     
-    def _summarize_extracted_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _summarize_extracted_data(self, data: Dict[str, Any]) -> str:
         """
-        Cria resumo dos dados extraídos.
+        Cria resumo dos dados extraídos em formato de texto amigável.
         
         Args:
             data (Dict[str, Any]): Dados extraídos
             
         Returns:
-            Dict[str, Any]: Resumo dos dados
+            str: Resumo dos dados em texto
         """
-        summary = {}
+        extracted_items = []
         
-        # Resumo por tipo de campo
         if data.get("name"):
-            summary["patient_name"] = data["name"][:20] + "..." if len(data["name"]) > 20 else data["name"]
+            extracted_items.append(f"nome: {data['name']}")
         
         if data.get("phone"):
-            summary["phone"] = data["phone"]
+            extracted_items.append(f"telefone: {data['phone']}")
         
         if data.get("consulta_date"):
-            summary["appointment_date"] = data["consulta_date"]
+            extracted_items.append(f"data: {data['consulta_date']}")
         
         if data.get("horario"):
-            summary["appointment_time"] = data["horario"]
+            extracted_items.append(f"horário: {data['horario']}")
         
         if data.get("tipo_consulta"):
-            summary["consultation_type"] = data["tipo_consulta"]
+            extracted_items.append(f"tipo de consulta: {data['tipo_consulta']}")
         
-        # Conta campos preenchidos
-        summary["total_fields"] = len([v for v in data.values() if v])
-        summary["total_possible"] = 5  # Campos principais
+        if not extracted_items:
+            return "não extraí nenhuma informação ainda"
+        elif len(extracted_items) == 1:
+            return f"extraí o {extracted_items[0]}"
+        else:
+            return f"extraí: {', '.join(extracted_items)}"
+    
+    def _get_field_display_name(self, field: str) -> str:
+        """
+        Retorna o nome de exibição de um campo para o usuário.
         
-        return summary 
+        Args:
+            field (str): Nome do campo interno
+            
+        Returns:
+            str: Nome de exibição do campo
+        """
+        field_names = {
+            "name": "nome completo do paciente",
+            "phone": "telefone para contato",
+            "telefone": "telefone para contato",
+            "consulta_date": "data do agendamento",
+            "data": "data do agendamento",
+            "horario": "horário",
+            "tipo_consulta": "tipo de consulta",
+            "email": "email",
+            "cpf": "CPF",
+            "cep": "CEP",
+            "endereco": "endereço"
+        }
+        
+        return field_names.get(field, field)
+    
+    def _format_validation_errors(self, errors: List[str]) -> str:
+        """
+        Formata erros de validação de forma mais amigável para o usuário.
+        
+        Args:
+            errors (List[str]): Lista de erros de validação
+            
+        Returns:
+            str: Erros formatados de forma amigável
+        """
+        if not errors:
+            return ""
+        
+        # Mapeia erros técnicos para mensagens mais amigáveis
+        error_mapping = {
+            "Telefone inválido: Número deve ter 10 ou 11 dígitos (com DDD)": "o telefone precisa ter DDD (ex: 11 32210126)",
+            "Data inválida: Expressão de data não reconhecida": "a data precisa estar em formato DD/MM/AAAA (ex: 21/07/2025)",
+            "CPF inválido": "o CPF está em formato incorreto",
+            "Email inválido": "o email está em formato incorreto"
+        }
+        
+        formatted_errors = []
+        for error in errors[:2]:  # Limita a 2 erros para não sobrecarregar
+            friendly_error = error_mapping.get(error, error)
+            formatted_errors.append(friendly_error)
+        
+        if len(formatted_errors) == 1:
+            return formatted_errors[0]
+        else:
+            return f"{', '.join(formatted_errors[:-1])} e {formatted_errors[-1]}" 
