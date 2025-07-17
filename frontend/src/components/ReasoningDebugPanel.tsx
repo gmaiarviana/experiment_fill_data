@@ -53,14 +53,23 @@ const ReasoningDebugPanel: React.FC<ReasoningDebugPanelProps> = ({
 
     // EXTRACT - Executado se há dados extraídos ou ação é extract
     if (hasExtractedData || action === 'extract' || action === 'extract_success') {
+      const extractedCount = Object.keys(lastResponse.extracted_data || {}).length
+      const filledFields = Object.entries(lastResponse.extracted_data || {})
+        .filter(([_, value]) => value && String(value).trim())
+        .map(([key, value]) => `${key}: ${value}`)
+      
       steps.push({
         type: 'extract',
         status: 'completed',
         timestamp: new Date().toLocaleTimeString(),
         details: hasExtractedData 
-          ? `Extraiu ${Object.keys(lastResponse.extracted_data || {}).length} campos`
+          ? `Extraiu ${extractedCount} campos (${filledFields.length} preenchidos)`
           : 'Tentativa de extração',
-        data: lastResponse.extracted_data
+        data: {
+          total_fields: extractedCount,
+          filled_fields: filledFields.length,
+          extracted_data: lastResponse.extracted_data
+        }
       })
     } else {
       steps.push({
@@ -72,12 +81,20 @@ const ReasoningDebugPanel: React.FC<ReasoningDebugPanelProps> = ({
 
     // VALIDATE - Executado se há dados extraídos
     if (hasExtractedData) {
+      const filledFields = Object.entries(lastResponse.extracted_data || {})
+        .filter(([_, value]) => value && String(value).trim())
+        .length
+      
       steps.push({
         type: 'validate',
         status: 'completed',
         timestamp: new Date().toLocaleTimeString(),
-        details: 'Dados validados e normalizados',
-        data: lastResponse.extracted_data
+        details: `Dados validados: ${filledFields}/5 campos preenchidos`,
+        data: {
+          validation_status: 'completed',
+          filled_fields: filledFields,
+          total_required: 5
+        }
       })
     } else {
       steps.push({
@@ -149,7 +166,17 @@ const ReasoningDebugPanel: React.FC<ReasoningDebugPanelProps> = ({
     }
   }
 
+  const getProgressPercentage = () => {
+    if (!lastResponse?.extracted_data) return 0
+    
+    const filledFields = Object.values(lastResponse.extracted_data)
+      .filter(value => value && String(value).trim()).length
+    
+    return Math.round((filledFields / 5) * 100)
+  }
+
   const reasoningSteps = getReasoningSteps()
+  const progressPercentage = getProgressPercentage()
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-4 h-full overflow-y-auto">
@@ -161,6 +188,28 @@ const ReasoningDebugPanel: React.FC<ReasoningDebugPanelProps> = ({
           Processo interno do agente em tempo real
         </p>
       </div>
+
+      {/* Progress Bar */}
+      {lastResponse?.extracted_data && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium text-blue-700">Progresso da Coleta</span>
+            <span className="text-sm text-blue-600">{progressPercentage}%</span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+          <div className="mt-2 text-xs text-blue-600">
+            {Object.entries(lastResponse.extracted_data)
+              .filter(([_, value]) => value && String(value).trim())
+              .map(([key, value]) => `${key}: ${value}`)
+              .join(', ')}
+          </div>
+        </div>
+      )}
 
       {isLoading && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -224,7 +273,9 @@ const ReasoningDebugPanel: React.FC<ReasoningDebugPanelProps> = ({
             {lastResponse.extracted_data && (
               <div className="flex justify-between">
                 <span className="text-gray-600">Campos extraídos:</span>
-                <span className="font-medium">{Object.keys(lastResponse.extracted_data).length}</span>
+                <span className="font-medium">
+                  {Object.values(lastResponse.extracted_data).filter(v => v && String(v).trim()).length}/5
+                </span>
               </div>
             )}
             {lastResponse.persistence_status && (

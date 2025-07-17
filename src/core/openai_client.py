@@ -22,12 +22,13 @@ class OpenAIClient:
         self.system_prompt = "Você é um assistente conversacional amigável. Responda de forma natural e útil."
         self.api_url = "https://api.openai.com/v1/chat/completions"
     
-    async def chat_completion(self, message: str) -> str:
+    async def chat_completion(self, message: str, system_prompt: str = None) -> str:
         """
         Envia uma mensagem para o modelo OpenAI e retorna a resposta.
         
         Args:
             message (str): Mensagem do usuário
+            system_prompt (str, optional): Prompt do sistema personalizado
             
         Returns:
             str: Resposta do modelo ou mensagem de erro amigável
@@ -38,10 +39,13 @@ class OpenAIClient:
                 "Content-Type": "application/json"
             }
             
+            # Usa system prompt personalizado ou padrão
+            prompt = system_prompt if system_prompt else self.system_prompt
+            
             data = {
                 "model": self.model,
                 "messages": [
-                    {"role": "system", "content": self.system_prompt},
+                    {"role": "system", "content": prompt},
                     {"role": "user", "content": message}
                 ],
                 "max_tokens": self.max_tokens
@@ -70,7 +74,7 @@ class OpenAIClient:
             return error_message
         except Exception as e:
             error_message = f"Desculpe, ocorreu um erro ao processar sua mensagem: {str(e)}"
-            return error_message 
+            return error_message
     
     async def extract_entities(self, message: str, function_schema: Dict[str, Any]) -> Dict[str, Any]:
         """
