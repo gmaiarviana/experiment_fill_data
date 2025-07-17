@@ -16,7 +16,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """Schema para respostas de chat com dados do ReasoningEngine"""
+    """Schema para respostas de chat com dados do ReasoningEngine e persistência"""
     response: str = Field(..., description="Resposta do sistema")
     timestamp: datetime = Field(default_factory=datetime.now, description="Timestamp da resposta")
     session_id: str = Field(..., description="ID da sessão do chat")
@@ -24,6 +24,8 @@ class ChatResponse(BaseModel):
     extracted_data: Optional[Dict[str, Any]] = Field(None, description="Dados extraídos pela engine")
     confidence: Optional[float] = Field(None, description="Score de confiança da resposta (0.0-1.0)")
     next_questions: Optional[List[str]] = Field(None, description="Próximas perguntas sugeridas")
+    consultation_id: Optional[int] = Field(None, description="ID da consulta persistida (se aplicável)")
+    persistence_status: Optional[str] = Field(None, description="Status da persistência: success/failed/error/not_applicable")
 
 
 class EntityExtractionRequest(BaseModel):

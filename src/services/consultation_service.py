@@ -118,11 +118,11 @@ class ConsultationService:
             # Step 3: Prepare data for persistence
             self.logger.debug("Step 3: Preparing data for persistence")
             
-            # Map normalized data to model fields
+            # Map normalized data to model fields (accept both Portuguese and English field names)
             consulta_data = {
-                "nome": normalized_data.get("name", ""),
-                "telefone": normalized_data.get("phone"),
-                "data": normalized_data.get("consulta_date"),
+                "nome": normalized_data.get("name") or normalized_data.get("nome", ""),
+                "telefone": normalized_data.get("phone") or normalized_data.get("telefone"),
+                "data": normalized_data.get("consulta_date") or normalized_data.get("data"),
                 "horario": normalized_data.get("horario"),
                 "tipo_consulta": normalized_data.get("tipo_consulta"),
                 "observacoes": normalized_data.get("observacoes"),

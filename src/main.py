@@ -7,7 +7,7 @@ This module provides CLI commands for testing and development.
 import sys
 import json
 import logging
-from typing import Optional
+from typing import Optional, List
 
 from .core.config import get_settings
 from .core.logging import setup_logging
@@ -115,6 +115,104 @@ async def test_persist(message: str, session_id: Optional[str] = None) -> None:
             
     except Exception as e:
         logger.error(f"Persistence test failed: {e}")
+        print(f"Error: {e}")
+
+
+async def test_chat_conversation(messages: List[str], session_id: Optional[str] = None) -> None:
+    """Test complete chat conversation with persistence integration."""
+    try:
+        print("=== Complete Chat Conversation Test ===")
+        print(f"Session ID: {session_id or 'Auto-generated'}")
+        print(f"Messages to process: {len(messages)}")
+        print()
+        
+        # Import here to avoid circular imports
+        import requests
+        import time
+        
+        base_url = "http://localhost:8000"
+        
+        for i, message in enumerate(messages, 1):
+            print(f"--- Message {i}/{len(messages)} ---")
+            print(f"📤 Sending: {message}")
+            
+            # Prepare request
+            payload = {"message": message}
+            if session_id:
+                payload["session_id"] = session_id
+            
+            try:
+                # Send request to chat endpoint
+                response = requests.post(
+                    f"{base_url}/chat/message",
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"📥 Response: {result['response']}")
+                    print(f"🎯 Action: {result.get('action', 'N/A')}")
+                    print(f"📊 Confidence: {result.get('confidence', 0.0):.2f}")
+                    
+                    if result.get('extracted_data'):
+                        print(f"📋 Extracted Data: {list(result['extracted_data'].keys())}")
+                    
+                    if result.get('consultation_id'):
+                        print(f"💾 Persisted Consultation ID: {result['consultation_id']}")
+                        print(f"💾 Persistence Status: {result.get('persistence_status', 'N/A')}")
+                    
+                    if result.get('next_questions'):
+                        print(f"❓ Next Questions: {result['next_questions']}")
+                    
+                    # Update session_id for next message (only if we got a valid response)
+                    if result.get('session_id'):
+                        session_id = result['session_id']
+                    
+                else:
+                    print(f"❌ Error: {response.status_code} - {response.text}")
+                    
+            except requests.exceptions.RequestException as e:
+                print(f"❌ Network error: {e}")
+            
+            print()
+            time.sleep(1)  # Small delay between messages
+        
+        # Show final session info
+        print("--- Session Summary ---")
+        try:
+            session_response = requests.get(f"{base_url}/sessions/{session_id}")
+            if session_response.status_code == 200:
+                session_info = session_response.json()
+                print(f"📊 Total Messages: {session_info.get('total_messages', 0)}")
+                print(f"📋 Extracted Fields: {session_info.get('extracted_fields', [])}")
+                print(f"📈 Data Completeness: {session_info.get('data_completeness', 0.0):.2f}")
+            else:
+                print(f"❌ Could not get session info: {session_response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Network error getting session info: {e}")
+        
+        # Show persisted consultations
+        print("\n--- Persisted Consultations ---")
+        try:
+            consultations_response = requests.get(f"{base_url}/consultations")
+            if consultations_response.status_code == 200:
+                consultations_data = consultations_response.json()
+                consultations = consultations_data.get('consultations', [])
+                print(f"📊 Total Consultations: {len(consultations)}")
+                
+                for consultation in consultations[:5]:  # Show first 5
+                    print(f"   - ID: {consultation.get('id')}, Nome: {consultation.get('nome', 'N/A')}, Status: {consultation.get('status', 'N/A')}")
+                
+                if len(consultations) > 5:
+                    print(f"   ... and {len(consultations) - 5} more")
+            else:
+                print(f"❌ Could not get consultations: {consultations_response.status_code}")
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Network error getting consultations: {e}")
+            
+    except Exception as e:
+        logger.error(f"Chat conversation test failed: {e}")
         print(f"Error: {e}")
 
 
@@ -235,6 +333,7 @@ def main():
         print("  python -m src.main validate <json_data>")
         print("  python -m src.main reason <text>")
         print("  python -m src.main persist <message> [session_id]")
+        print("  python -m src.main chat <message1> <message2> ... [session_id]")
         print("  python -m src.main setup-db")
         return
     
@@ -270,12 +369,31 @@ def main():
             session_id = sys.argv[3] if len(sys.argv) > 3 else None
             asyncio.run(test_persist(message, session_id))
             
+        elif command == "chat":
+            if len(sys.argv) < 3:
+                print("Error: At least one message required for chat conversation")
+                return
+            # Parse messages and session_id correctly
+            if len(sys.argv) > 3:
+                # Check if last argument looks like a session_id (UUID format)
+                last_arg = sys.argv[-1]
+                if len(last_arg) == 36 and '-' in last_arg:  # UUID format
+                    messages = sys.argv[2:-1]
+                    session_id = last_arg
+                else:
+                    messages = sys.argv[2:]
+                    session_id = None
+            else:
+                messages = [sys.argv[2]]
+                session_id = None
+            asyncio.run(test_chat_conversation(messages, session_id))
+            
         elif command == "setup-db":
             test_database()
             
         else:
             print(f"Unknown command: {command}")
-            print("Available commands: extract, validate, reason, persist, setup-db")
+            print("Available commands: extract, validate, reason, persist, chat, setup-db")
             
     except Exception as e:
         logger.error(f"CLI execution failed: {e}")

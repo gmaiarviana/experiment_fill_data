@@ -9,6 +9,7 @@ from src.core.reasoning_engine import ReasoningEngine
 from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
 from src.core.logging import setup_logging
 from src.core.config import get_settings
+from src.services.consultation_service import ConsultationService
 from datetime import datetime
 from typing import Dict, Any, Optional
 import uuid
@@ -66,6 +67,14 @@ try:
 except Exception as e:
     logger.error(f"Erro ao inicializar Reasoning Engine: {e}")
     reasoning_engine = None
+
+# Initialize Consultation Service
+try:
+    consultation_service = ConsultationService()
+    logger.info("Consultation Service inicializado com sucesso")
+except Exception as e:
+    logger.error(f"Erro ao inicializar Consultation Service: {e}")
+    consultation_service = None
 
 # Global session management
 sessions: Dict[str, Dict[str, Any]] = {}
@@ -202,7 +211,48 @@ async def chat_message(request: Request) -> ChatResponse:
                 if extracted_data:
                     logger.info(f"Dados extraídos: {list(extracted_data.keys())}")
                 
-                # Create enhanced response with ReasoningEngine data
+                # INTEGRAÇÃO COM PERSISTÊNCIA - Funcionalidade 3.6
+                consultation_id = None
+                persistence_status = "not_applicable"
+                
+                # Se temos dados extraídos e ação é "extract", "confirm" ou "complete", tentar persistir
+                if extracted_data and action in ["extract", "confirm", "complete"] and consultation_service is not None:
+                    try:
+                        logger.info("Tentando persistir dados extraídos via ConsultationService")
+                        
+                        # Processar e persistir dados
+                        persistence_result = await consultation_service.process_and_persist(
+                            chat_request.message, 
+                            session_id
+                        )
+                        
+                        if persistence_result.get("success", False):
+                            consultation_id = persistence_result.get("consultation_id")
+                            persistence_status = "success"
+                            logger.info(f"✅ Consulta persistida com sucesso - ID: {consultation_id}")
+                            
+                            # Atualizar response com confirmação de persistência
+                            if action == "extract":
+                                response_text += f"\n\n✅ Consulta registrada com sucesso! (ID: {consultation_id})"
+                            elif action == "confirm":
+                                response_text += f"\n\n✅ Consulta confirmada e salva! (ID: {consultation_id})"
+                            elif action == "complete":
+                                response_text += f"\n\n✅ Consulta completa registrada com sucesso! (ID: {consultation_id})"
+                                
+                        else:
+                            persistence_status = "failed"
+                            persistence_errors = persistence_result.get("errors", [])
+                            logger.warning(f"❌ Falha na persistência: {persistence_errors}")
+                            
+                            # Adicionar informação sobre falha na persistência
+                            response_text += f"\n\n⚠️ Não foi possível salvar a consulta: {', '.join(persistence_errors)}"
+                            
+                    except Exception as e:
+                        persistence_status = "error"
+                        logger.error(f"Erro durante persistência: {str(e)}")
+                        response_text += f"\n\n⚠️ Erro ao salvar consulta: {str(e)}"
+                
+                # Create enhanced response with ReasoningEngine data and persistence info
                 response = ChatResponse(
                     response=response_text,
                     session_id=session_id,
@@ -210,11 +260,13 @@ async def chat_message(request: Request) -> ChatResponse:
                     action=action,
                     extracted_data=extracted_data,
                     confidence=confidence,
-                    next_questions=result.get("next_questions", [])
+                    next_questions=result.get("next_questions", []),
+                    consultation_id=consultation_id,
+                    persistence_status=persistence_status
                 )
                 
-                # Log reasoning results
-                logger.info(f"Reasoning data - Action: {action}, Confidence: {confidence}, Data: {extracted_data}")
+                # Log reasoning results with persistence info
+                logger.info(f"Reasoning data - Action: {action}, Confidence: {confidence}, Data: {extracted_data}, Persistence: {persistence_status}, Consultation ID: {consultation_id}")
                 
             except Exception as e:
                 logger.error(f"Erro no ReasoningEngine: {str(e)}")
@@ -531,3 +583,62 @@ async def list_sessions():
     except Exception as e:
         logger.error(f"Erro ao listar sessões: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/consultations")
+async def list_consultations():
+    """List all persisted consultations"""
+    logger.info("=== INÍCIO: Endpoint /consultations ===")
+    
+    try:
+        if consultation_service is None:
+            raise HTTPException(status_code=503, detail="Consultation service não disponível")
+        
+        # Get consultations from service
+        consultations = consultation_service.list_consultations(limit=50)
+        
+        logger.info(f"Listando {len(consultations)} consultas persistidas")
+        logger.info("=== FIM: Endpoint /consultations - Sucesso ===")
+        
+        return {
+            "consultations": consultations,
+            "total_consultations": len(consultations),
+            "timestamp": datetime.utcnow()
+        }
+        
+    except HTTPException:
+        logger.error("=== FIM: Endpoint /consultations - HTTPException ===")
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao listar consultas: {e}")
+        logger.error("=== FIM: Endpoint /consultations - Erro ===")
+        raise HTTPException(status_code=500, detail=f"Erro ao listar consultas: {str(e)}")
+
+
+@app.get("/consultations/{consultation_id}")
+async def get_consultation(consultation_id: int):
+    """Get a specific consultation by ID"""
+    logger.info(f"=== INÍCIO: Endpoint /consultations/{consultation_id} ===")
+    
+    try:
+        if consultation_service is None:
+            raise HTTPException(status_code=503, detail="Consultation service não disponível")
+        
+        # Get consultation from service
+        consultation = consultation_service.get_consultation(consultation_id)
+        
+        if consultation is None:
+            raise HTTPException(status_code=404, detail=f"Consulta com ID {consultation_id} não encontrada")
+        
+        logger.info(f"Consulta {consultation_id} recuperada com sucesso")
+        logger.info("=== FIM: Endpoint /consultations/{consultation_id} - Sucesso ===")
+        
+        return consultation
+        
+    except HTTPException:
+        logger.error("=== FIM: Endpoint /consultations/{consultation_id} - HTTPException ===")
+        raise
+    except Exception as e:
+        logger.error(f"Erro ao recuperar consulta {consultation_id}: {e}")
+        logger.error("=== FIM: Endpoint /consultations/{consultation_id} - Erro ===")
+        raise HTTPException(status_code=500, detail=f"Erro ao recuperar consulta: {str(e)}")
