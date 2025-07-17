@@ -16,7 +16,9 @@ from .core.validators import validate_brazilian_phone, parse_relative_date, norm
 from .core.data_normalizer import normalize_consulta_data
 from .core.reasoning_engine import ReasoningEngine
 from .core.database import create_tables, test_connection, get_engine
+from .services.consultation_service import ConsultationService
 from sqlalchemy import text
+import asyncio
 
 # Setup logging
 setup_logging()
@@ -88,6 +90,31 @@ def test_reasoning(text: str) -> None:
         
     except Exception as e:
         logger.error(f"Reasoning test failed: {e}")
+        print(f"Error: {e}")
+
+
+async def test_persist(message: str, session_id: Optional[str] = None) -> None:
+    """Test consultation processing and persistence."""
+    try:
+        print("=== Consultation Processing & Persistence Test ===")
+        
+        service = ConsultationService()
+        result = await service.process_and_persist(message, session_id)
+        
+        print(f"Input message: {message}")
+        print(f"Session ID: {session_id or 'None'}")
+        print(f"Result: {json.dumps(result, indent=2, ensure_ascii=False)}")
+        
+        if result["success"]:
+            print(f"✅ Consultation created successfully with ID: {result['consultation_id']}")
+            print(f"📊 Confidence score: {result['confidence']:.2f}")
+            if result.get("errors"):
+                print(f"⚠️  Validation warnings: {result['errors']}")
+        else:
+            print(f"❌ Processing failed: {result.get('errors', ['Unknown error'])}")
+            
+    except Exception as e:
+        logger.error(f"Persistence test failed: {e}")
         print(f"Error: {e}")
 
 
@@ -207,6 +234,7 @@ def main():
         print("  python -m src.main extract <text>")
         print("  python -m src.main validate <json_data>")
         print("  python -m src.main reason <text>")
+        print("  python -m src.main persist <message> [session_id]")
         print("  python -m src.main setup-db")
         return
     
@@ -234,12 +262,20 @@ def main():
             text = sys.argv[2]
             test_reasoning(text)
             
+        elif command == "persist":
+            if len(sys.argv) < 3:
+                print("Error: Message required for persistence")
+                return
+            message = sys.argv[2]
+            session_id = sys.argv[3] if len(sys.argv) > 3 else None
+            asyncio.run(test_persist(message, session_id))
+            
         elif command == "setup-db":
             test_database()
             
         else:
             print(f"Unknown command: {command}")
-            print("Available commands: extract, validate, reason, setup-db")
+            print("Available commands: extract, validate, reason, persist, setup-db")
             
     except Exception as e:
         logger.error(f"CLI execution failed: {e}")
