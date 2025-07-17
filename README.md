@@ -8,7 +8,7 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **Input**: Conversa natural e fluida
 - **Processamento**: Extração inteligente de entidades e intenções via LLM
 - **Output**: Dados estruturados (cards/tickets/registros)
-- **Interface**: N8N para visualização e orchestração
+- **Interface**: Interface React para visualização e interação (etapa 4)
 
 ---
 
@@ -23,13 +23,11 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **ReasoningEngine**: Motor de raciocínio para decisões conversacionais
 - **Docker Compose**: Containerização completa
 
-### **Interface e Orchestração**
-- **N8N**: Interface visual operacional + Backend API control
-- **N8N API**: Programmatic control via Python (list, validate, update)
-- **Webhooks**: Formulários web para input do usuário via N8N
-- **HTTP Integration**: N8N chama FastAPI via `http://api:8000`
+### **Interface e Acesso aos Dados**
 - **PostgREST**: API REST automática para acesso direto aos dados
-- **React (opcional)**: Interface web complementar se necessário
+- **React (etapa 4)**: Interface web conversacional para interação natural
+- **Webhooks**: Formulários web para input do usuário
+- **HTTP Integration**: Interface chama FastAPI via `http://api:8000`
 
 ### **Bibliotecas Especializadas**
 - **Pydantic**: Validação e serialização de dados estruturados
@@ -49,8 +47,8 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   N8N Interface │    │  Chat Service   │    │ Data Service    │
-│   (Workflows)   │───▶│ (Conversation)  │───▶│ (Structured)    │
+│ React Interface │    │  Chat Service   │    │ Data Service    │
+│   (Conversation)│───▶│ (Conversation)  │───▶│ (Structured)    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                │
                                ▼
@@ -194,15 +192,6 @@ src/
 └── main.py                    # Entry point CLI (para testes)
 ```
 
-### **N8N Workflows Structure**
-```
-n8n_workflows/
-├── chat_interface.json        # Workflow principal de chat
-├── data_viewer.json          # Visualização de dados estruturados
-├── extraction_debug.json     # Debug de extrações
-└── system_monitor.json       # Monitoramento de saúde
-```
-
 ---
 
 ## Modelo de Dados
@@ -308,22 +297,6 @@ services:
       - .:/app
     depends_on:
       - postgres
-
-  # N8N para interface visual
-  n8n:
-    image: n8nio/n8n
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
-      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-admin123}
-      - WEBHOOK_URL=http://localhost:5678/
-      - GENERIC_TIMEZONE=America/Sao_Paulo
-    volumes:
-      - n8n_data:/home/node/.n8n
-    depends_on:
-      - api
 ```
 
 ---
@@ -336,13 +309,11 @@ services:
 docker-compose up -d
 
 # URLs principais:
-# http://localhost:5678    - N8N Interface (admin/admin123)
 # http://localhost:8000    - FastAPI Backend + Docs
 # http://localhost:3000    - PostgREST (dados diretos)
 
-# Workflows operacionais:
-# http://localhost:5678/webhook/chat - Chat interface completa
-# Backend control via: WorkflowManager + N8NClient
+# Interface React (etapa 4):
+# http://localhost:3001    - Interface conversacional
 ```
 
 ---
@@ -360,10 +331,6 @@ OPENAI_MAX_TOKENS=500
 # Database
 DB_PASSWORD=secure_password_here
 DATABASE_URL=postgresql://agent_user:${DB_PASSWORD}@localhost:5432/data_agent
-
-# N8N Interface
-N8N_USER=admin
-N8N_PASSWORD=admin123
 
 # Chat Configuration
 CHAT_CONTEXT_WINDOW=4000
@@ -391,7 +358,6 @@ cp .env.example .env
 docker-compose up -d
 
 # URLs de acesso:
-# http://localhost:5678    - N8N Interface
 # http://localhost:8000    - FastAPI (API + docs)
 # http://localhost:3000    - PostgREST (dados diretos)
 ```
@@ -405,9 +371,6 @@ curl -X POST "http://localhost:8000/chat/message" \
 
 # Verificar dados estruturados criados
 curl "http://localhost:3000/consultas"
-
-# Interface visual via N8N
-# Importar workflow: n8n_workflows/chat_interface.json
 
 ### **Comandos Principais**
 ```bash
@@ -465,9 +428,9 @@ python -m src.main reason "Sim, confirma" '{"extracted_data": {"name": "João Si
 ## Princípios de Design
 
 ### **Interface-First Development**
-- N8N como interface principal desde o início
+- Interface React conversacional como objetivo principal (etapa 4)
 - Visualização de dados estruturados em tempo real
-- Workflows demonstram funcionalidades implementadas
+- Experiência demonstrável e profissional desde o início
 
 ### **Incremental Value Delivery**
 - Cada etapa entrega funcionalidade testável

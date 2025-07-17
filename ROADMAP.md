@@ -20,11 +20,13 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## ✅ **ETAPA 2: INTERFACE VISUAL N8N - CONCLUÍDA**
+## ❌ **ETAPA 2: INTERFACE VISUAL N8N - DEPRECADA**
 
 **Objetivo**: Interface visual para conversação via workflows N8N, mantendo FastAPI como backend.
 
-**Funcionalidades Implementadas:**
+**Status**: DEPRECADA - Substituída pela Etapa 4 (Interface React)
+
+**Funcionalidades Implementadas (mantidas para referência):**
 - ✅ **Setup N8N Completo**: Container + API + Networking funcionando
 - ✅ **Interface Visual**: N8N acessível em localhost:5678 com Basic Auth  
 - ✅ **Workflow Chat Completo**: 3 nodes (Webhook → FastAPI → Response)
@@ -33,6 +35,8 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - ✅ **Versionamento**: Workflows como JSON versionados no git
 
 **Resultado Alcançado**: Interface visual N8N operacional com chat completo via webhook. Backend control implementado via API para list/validate workflows. Environment setup Docker completo com versionamento de workflows.
+
+**Motivo da Deprecação**: Decisão arquitetural de focar em interface React nativa para melhor experiência do usuário e controle total sobre a interface conversacional.
 
 ---
 
@@ -48,13 +52,12 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - ✅ **Response estruturado com confidence score**: Score baseado em completude (0.0-1.0)
 - ✅ **Identificação automática de campos faltantes**: Sistema detecta e sugere perguntas
 - ✅ **Teste CLI funcionando**: `python -m src.main extract "texto natural"` → JSON estruturado
-- ✅ **Teste N8N funcionando**: Workflow com webhook + chat trigger operacional
+- ✅ **Teste API funcionando**: Endpoint `/extract/entities` operacional
 
 **Implementação Realizada:**
 - **EntityExtractor**: `src/core/entity_extraction.py` - Extração especializada para consultas médicas
 - **CLI Command**: `src/main.py` - Sistema de linha de comando para testes
 - **HTTP Endpoints**: `/extract/entities` e `/chat/message` com validação completa  
-- **N8N Interface**: Dupla modalidade - Webhook: `http://localhost:5678/webhook/extract-demo` + Chat Trigger visual
 - **Schemas Pydantic**: Validação estruturada em `src/api/schemas/chat.py`
 
 **Resultado**: Sistema converte linguagem natural em dados estruturados com confidence score de até 100%.
@@ -87,7 +90,7 @@ Critérios de Aceite:
 ✅ Context awareness: lembra informações durante sessão
 ✅ Decisão automática: extrair vs perguntar vs confirmar
 ✅ Teste CLI: python -m src.main reason "texto parcial" → próxima ação
-✅ Teste N8N: Chat conversacional completo funcionando
+✅ Teste API: Chat conversacional completo funcionando
 
 Implementação Realizada:
 
@@ -96,7 +99,6 @@ Context Management: Session management em memória com merge inteligente de dado
 Smart Decisions: Analisa contexto e histórico para decidir próxima ação automaticamente
 API Integration: Endpoint /chat/message expandido com ReasoningEngine
 CLI Command: python -m src.main reason para debugging do reasoning loop
-N8N Integration: Workflow funcionalidade_3_3.json com webhook operacional
 
 ### **Funcionalidade 3.4: PostgreSQL Schema Setup - ✅ IMPLEMENTADA**
 
@@ -129,8 +131,8 @@ N8N Integration: Workflow funcionalidade_3_3.json com webhook operacional
 - Endpoint `/chat/message` evolui para usar extração + persistência
 - Session management com context entre mensagens
 - Response inclui: resposta conversacional + dados estruturados + status
-- Workflow N8N demonstra fluxo completo end-to-end
-- **Teste N8N**: Chat interface + visualização dados estruturados
+- Visualização será implementada na interface React da Etapa 4
+- **Teste API**: Chat interface + visualização dados estruturados
 - **Teste CLI**: Conversa completa via linha de comando
 
 **Arquitetura Técnica:**
