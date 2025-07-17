@@ -64,12 +64,17 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 **Funcionalidades Planejadas:**
 
-### **Funcionalidade 4.1: Interface de Chat Básica**
+### ✅ Funcionalidade 4.1: Interface de Chat Básica
 **Critérios de Aceite:**
 - Interface de chat responsiva com input de mensagem e histórico de conversa
 - Indicador visual de "processando" durante extração pelo agente
 - Design limpo e mobile-friendly sem complexidade visual desnecessária
 - Integração básica com endpoint `/chat/message` do FastAPI
+
+**Status:** ✅ IMPLEMENTADA
+- Interface React criada com Vite, TypeScript e Tailwind
+- Integração CORS ajustada para porta 3001
+- Testes manuais realizados com sucesso
 
 ### **Funcionalidade 4.2: Painel de Debug do Reasoning Loop**
 **Critérios de Aceite:**
