@@ -18,7 +18,7 @@ from src.models import Consulta, ChatSession, ExtractionLog
 from src.core.database import get_engine, get_session_factory
 
 
-def test_schema_integrity() -> bool:
+def test_schema_integrity():
     """
     Testa a integridade da estrutura das tabelas PostgreSQL.
     
@@ -27,9 +27,6 @@ def test_schema_integrity() -> bool:
     - Campos obrigatórios em cada tabela
     - Tipos de dados corretos (JSONB, UUID, DECIMAL)
     - Constraints e índices
-    
-    Returns:
-        bool: True se todos os testes passaram, False caso contrário
     """
     print("🔍 Testando integridade do schema PostgreSQL...")
     
@@ -48,7 +45,7 @@ def test_schema_integrity() -> bool:
                 
                 if not result.scalar():
                     print(f"❌ Tabela '{table_name}' não encontrada")
-                    return False
+                    assert False
                 else:
                     print(f"✅ Tabela '{table_name}' existe")
         
@@ -76,12 +73,12 @@ def test_schema_integrity() -> bool:
             for field, expected_type in consultas_required_fields.items():
                 if field not in columns:
                     print(f"❌ Campo obrigatório '{field}' não encontrado em 'consultas'")
-                    return False
+                    assert False
                 
                 actual_type = columns[field]['type']
                 if expected_type not in actual_type:
                     print(f"❌ Campo '{field}' tem tipo '{actual_type}', esperado '{expected_type}'")
-                    return False
+                    assert False
                 
                 print(f"✅ Campo '{field}' ({actual_type}) - {'NULL' if columns[field]['nullable'] == 'YES' else 'NOT NULL'}")
         
@@ -97,7 +94,7 @@ def test_schema_integrity() -> bool:
             
             if result.scalar() != 'jsonb':
                 print("❌ Campo 'context' em 'chat_sessions' não é JSONB")
-                return False
+                assert False
             else:
                 print("✅ Campo 'context' é JSONB")
         
@@ -110,7 +107,7 @@ def test_schema_integrity() -> bool:
             
             if 'uuid' not in result.scalar():
                 print("❌ Campo 'session_id' em 'consultas' não é UUID")
-                return False
+                assert False
             else:
                 print("✅ Campo 'session_id' é UUID")
         
@@ -123,19 +120,19 @@ def test_schema_integrity() -> bool:
             
             if 'numeric' not in result.scalar():
                 print("❌ Campo 'confidence_score' em 'consultas' não é DECIMAL")
-                return False
+                assert False
             else:
                 print("✅ Campo 'confidence_score' é DECIMAL")
         
         print("\n✅ Teste de integridade do schema passou!")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Erro ao testar schema: {e}")
-        return False
+        assert False
 
 
-def test_data_insertion() -> bool:
+def test_data_insertion():
     """
     Testa inserção de dados de teste em todas as tabelas.
     
@@ -144,9 +141,6 @@ def test_data_insertion() -> bool:
     - Inserção em ChatSession  
     - Inserção em ExtractionLog
     - Relacionamentos entre tabelas
-    
-    Returns:
-        bool: True se todas as inserções passaram, False caso contrário
     """
     print("\n📝 Testando inserção de dados...")
     
@@ -234,7 +228,7 @@ def test_data_insertion() -> bool:
             print(f"    ✅ Consulta encontrada por session_id: {consulta_by_session.nome}")
         else:
             print("    ❌ Consulta não encontrada por session_id")
-            return False
+            assert False
         
         # Buscar logs por session_id
         logs_by_session = session.query(ExtractionLog).filter(
@@ -245,18 +239,18 @@ def test_data_insertion() -> bool:
             print(f"    ✅ {len(logs_by_session)} logs encontrados por session_id")
         else:
             print("    ❌ Logs não encontrados por session_id")
-            return False
+            assert False
         
         session.close()
         print("\n✅ Teste de inserção de dados passou!")
-        return True
+        assert True
         
     except Exception as e:
         print(f"❌ Erro ao testar inserção de dados: {e}")
         if 'session' in locals():
             session.rollback()
             session.close()
-        return False
+        assert False
 
 
 def cleanup_test_data() -> bool:

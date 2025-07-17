@@ -13,24 +13,22 @@ def test_health_endpoint():
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}"
         print(f"✅ Health check endpoint OK: {response.status_code}")
-        return True
+        assert True
         
     except requests.exceptions.ConnectionError:
         print("❌ API não está rodando em localhost:8000")
-        return False
+        assert False
     except Exception as e:
         print(f"❌ Erro: {e}")
-        return False
+        assert False
 
 
 if __name__ == "__main__":
     print("🧪 Teste do Health Check Endpoint")
     print("-" * 40)
     
-    success = test_health_endpoint()
-    
-    print("-" * 40)
-    if success:
+    try:
+        test_health_endpoint()
         print("✅ Teste passou!")
-    else:
+    except AssertionError:
         print("❌ Teste falhou!") 
