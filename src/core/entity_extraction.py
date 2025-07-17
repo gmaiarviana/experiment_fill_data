@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from loguru import logger
 from src.core.openai_client import OpenAIClient
 from src.core.data_normalizer import normalize_consulta_data
@@ -45,29 +45,45 @@ class EntityExtractor:
             }
         }
     
-    async def extract_consulta_entities(self, message: str) -> Dict[str, Any]:
+    async def extract_consulta_entities(self, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
         Extrai entidades de consulta de uma mensagem em linguagem natural.
         
         Args:
             message (str): Mensagem em linguagem natural
+            context (Dict[str, Any], optional): Contexto da sessão com dados já extraídos
             
         Returns:
             Dict: Resultado da extração com dados estruturados e confidence score
         """
+        # Prepara contexto para melhorar extração
+        enhanced_message = self._enhance_message_with_context(message, context)
+        
         result = await self.openai_client.extract_entities(
-            message=message,
+            message=enhanced_message,
             function_schema=self.consulta_schema
         )
         
         if result["success"]:
-            # Aplica normalização aos dados extraídos
+            # Combina com dados existentes do contexto
+            existing_data = context.get("extracted_data", {}) if context else {}
+            new_data = result["extracted_data"]
+            
+            # Atualiza dados existentes com novos dados (novos dados têm prioridade)
+            combined_data = {**existing_data, **new_data}
+            result["extracted_data"] = combined_data
+            
+            # Aplica normalização aos dados combinados
             try:
-                normalization_result = normalize_consulta_data(result["extracted_data"])
+                normalization_result = normalize_consulta_data(combined_data)
                 
                 # Usa dados normalizados e confidence score do normalizador
                 result["extracted_data"] = normalization_result["normalized_data"]
-                result["confidence_score"] = normalization_result["confidence_score"]
+                result["confidence_score"] = self._calculate_improved_confidence(
+                    normalization_result["normalized_data"],
+                    normalization_result["validation_errors"],
+                    context
+                )
                 result["normalization_applied"] = True
                 
                 # Adiciona informações de validação se houver erros
@@ -75,16 +91,20 @@ class EntityExtractor:
                     result["validation_errors"] = normalization_result["validation_errors"]
                     logger.warning(f"Erros de validação na normalização: {normalization_result['validation_errors']}")
                 
-                logger.info(f"Normalização aplicada com sucesso. Confidence score: {normalization_result['confidence_score']}")
+                logger.info(f"Normalização aplicada com sucesso. Confidence score: {result['confidence_score']:.2f}")
                 
             except Exception as e:
                 # Se normalização falhar, usa dados originais e loga warning
                 logger.warning(f"Falha na normalização, usando dados originais: {str(e)}")
                 result["normalization_applied"] = False
                 result["normalization_error"] = str(e)
+                result["confidence_score"] = self._calculate_improved_confidence(
+                    combined_data, [], context
+                )
             
             # Adiciona informações específicas sobre campos faltantes
-            missing_fields = result["missing_fields"]
+            missing_fields = self._get_missing_fields(result["extracted_data"])
+            result["missing_fields"] = missing_fields
             
             # Mapeia campos para perguntas amigáveis e contextuais
             field_questions = {
@@ -106,34 +126,136 @@ class EntityExtractor:
             result["suggested_questions"] = suggested_questions
             result["is_complete"] = len(missing_fields) == 0
             
-            # Calcula confidence score baseado na qualidade dos dados extraídos
-            extracted_data = result["extracted_data"]
-            confidence_factors = []
-            
-            # Fator 1: Número de campos extraídos
-            extracted_count = len([v for v in extracted_data.values() if v])
-            if extracted_count > 0:
-                confidence_factors.append(min(0.8, extracted_count * 0.2))
-            
-            # Fator 2: Qualidade dos dados (validação)
-            if not result.get("validation_errors"):
-                confidence_factors.append(0.2)
-            
-            # Fator 3: Completude dos dados obrigatórios
-            required_fields = ["name", "phone", "consulta_date", "horario"]
-            required_count = sum(1 for field in required_fields if extracted_data.get(field))
-            if required_count > 0:
-                confidence_factors.append(min(0.3, required_count * 0.1))
-            
-            # Calcula confidence final
-            if confidence_factors:
-                calculated_confidence = sum(confidence_factors)
-                # Usa o maior entre o calculado e o original
-                result["confidence_score"] = max(result["confidence_score"], calculated_confidence)
-            
             logger.info(f"Confidence score final: {result['confidence_score']:.2f}")
         
         return result
+    
+    def _enhance_message_with_context(self, message: str, context: Dict[str, Any] = None) -> str:
+        """
+        Enriquece a mensagem com contexto para melhorar extração.
+        
+        Args:
+            message: Mensagem original
+            context: Contexto da sessão
+            
+        Returns:
+            Mensagem enriquecida com contexto
+        """
+        if not context or not context.get("extracted_data"):
+            return message
+        
+        existing_data = context["extracted_data"]
+        context_info = []
+        
+        # Adiciona informações já conhecidas como contexto
+        if existing_data.get("nome"):
+            context_info.append(f"nome já informado: {existing_data['nome']}")
+        if existing_data.get("telefone"):
+            context_info.append(f"telefone já informado: {existing_data['telefone']}")
+        if existing_data.get("data"):
+            context_info.append(f"data já informada: {existing_data['data']}")
+        if existing_data.get("horario"):
+            context_info.append(f"horário já informado: {existing_data['horario']}")
+        if existing_data.get("tipo_consulta"):
+            context_info.append(f"tipo de consulta já informado: {existing_data['tipo_consulta']}")
+        
+        if context_info:
+            enhanced_message = f"Contexto: {'; '.join(context_info)}. Nova mensagem: {message}"
+            logger.debug(f"Mensagem enriquecida com contexto: {enhanced_message}")
+            return enhanced_message
+        
+        return message
+    
+    def _calculate_improved_confidence(self, extracted_data: Dict[str, Any], validation_errors: List[str], context: Dict[str, Any] = None) -> float:
+        """
+        Calcula confidence score melhorado baseado em múltiplos fatores.
+        
+        Args:
+            extracted_data: Dados extraídos
+            validation_errors: Erros de validação
+            context: Contexto da sessão
+            
+        Returns:
+            Confidence score entre 0.0 e 1.0
+        """
+        confidence_factors = []
+        
+        # Fator 1: Número de campos extraídos (0.0 - 0.4)
+        extracted_count = len([v for v in extracted_data.values() if v and str(v).strip()])
+        total_fields = 5  # nome, telefone, data, horario, tipo_consulta
+        if extracted_count > 0:
+            field_ratio = extracted_count / total_fields
+            confidence_factors.append(field_ratio * 0.4)
+        
+        # Fator 2: Qualidade dos dados (0.0 - 0.3)
+        if not validation_errors:
+            confidence_factors.append(0.3)
+        else:
+            # Penaliza por erros de validação
+            error_penalty = min(0.3, len(validation_errors) * 0.1)
+            confidence_factors.append(max(0.0, 0.3 - error_penalty))
+        
+        # Fator 3: Completude dos dados obrigatórios (0.0 - 0.2)
+        required_fields = ["nome", "telefone", "data", "horario"]
+        required_count = sum(1 for field in required_fields if extracted_data.get(field))
+        if required_count > 0:
+            required_ratio = required_count / len(required_fields)
+            confidence_factors.append(required_ratio * 0.2)
+        
+        # Fator 4: Progresso da conversa (0.0 - 0.1)
+        if context and context.get("conversation_history"):
+            history_length = len(context["conversation_history"])
+            if history_length > 1:
+                # Pequeno bônus para conversas em andamento
+                progress_bonus = min(0.1, history_length * 0.02)
+                confidence_factors.append(progress_bonus)
+        
+        # Calcula confidence final
+        if confidence_factors:
+            calculated_confidence = sum(confidence_factors)
+            # Garante que está entre 0.0 e 1.0
+            return max(0.0, min(1.0, calculated_confidence))
+        
+        return 0.0
+    
+    def _get_missing_fields(self, extracted_data: Dict[str, Any]) -> List[str]:
+        """
+        Identifica campos faltantes baseado nos dados extraídos.
+        
+        Args:
+            extracted_data: Dados extraídos
+            
+        Returns:
+            Lista de campos faltantes
+        """
+        # Mapeia campos normalizados para campos originais
+        field_mapping = {
+            "name": "nome",
+            "phone": "telefone",
+            "consulta_date": "data",
+            "horario": "horario",
+            "tipo_consulta": "tipo_consulta"
+        }
+        
+        required_fields = ["nome", "telefone", "data", "horario", "tipo_consulta"]
+        missing_fields = []
+        
+        for field in required_fields:
+            # Verifica se o campo existe diretamente ou através do mapeamento
+            field_value = None
+            if field in extracted_data:
+                field_value = extracted_data[field]
+            else:
+                # Procura pelo campo mapeado
+                for mapped_key, mapped_field in field_mapping.items():
+                    if mapped_field == field and mapped_key in extracted_data:
+                        field_value = extracted_data[mapped_key]
+                        break
+            
+            if not field_value or not str(field_value).strip():
+                missing_fields.append(field)
+        
+        return missing_fields
     
     def get_schema(self) -> Dict[str, Any]:
         """

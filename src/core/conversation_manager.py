@@ -40,16 +40,24 @@ class ConversationManager:
             "repetition_count": 0,
             "last_response": None,
             "last_action": None,
-            "consecutive_asks": 0
+            "consecutive_asks": 0,
+            "data_progress": {
+                "nome": False,
+                "telefone": False,
+                "data": False,
+                "horario": False,
+                "tipo_consulta": False
+            }
         }
     
-    def update_context(self, context: Dict[str, Any], new_data: Dict[str, Any], action: str, response: str) -> Dict[str, Any]:
+    def update_context(self, context: Dict[str, Any], extracted_data: Dict[str, Any], 
+                      action: str, response: str) -> Dict[str, Any]:
         """
-        Atualiza o contexto da conversa com novos dados.
+        Atualiza o contexto com novos dados e informações.
         
         Args:
             context: Contexto atual
-            new_data: Novos dados extraídos
+            extracted_data: Dados extraídos
             action: Ação realizada
             response: Resposta gerada
             
@@ -57,27 +65,61 @@ class ConversationManager:
             Contexto atualizado
         """
         # Atualiza dados extraídos
-        if new_data:
-            context["extracted_data"].update(new_data)
+        if extracted_data:
+            context["extracted_data"] = {**context.get("extracted_data", {}), **extracted_data}
+            
+            # Atualiza progresso dos dados
+            data_progress = context.get("data_progress", {})
+            for field, value in extracted_data.items():
+                if value and str(value).strip():
+                    data_progress[field] = True
+            context["data_progress"] = data_progress
         
-        # Verifica se é repetição
-        if self._is_repetition(context, response):
-            context["repetition_count"] += 1
-            logger.warning(f"Repetição detectada. Contador: {context['repetition_count']}")
-        else:
-            context["repetition_count"] = 0
-        
-        # Atualiza contador de perguntas consecutivas
+        # Atualiza contadores de ação
         if action == "ask":
             context["consecutive_asks"] = context.get("consecutive_asks", 0) + 1
         else:
             context["consecutive_asks"] = 0
         
-        # Atualiza histórico
+        # Verifica repetição
+        if self._is_repetition(context, response):
+            context["repetition_count"] = context.get("repetition_count", 0) + 1
+            logger.warning(f"Repetição detectada. Contador: {context['repetition_count']}")
+        else:
+            context["repetition_count"] = 0
+        
+        # Atualiza última resposta e ação
         context["last_response"] = response
         context["last_action"] = action
         
         return context
+    
+    def add_to_history(self, context: Dict[str, Any], message: str, action: str, 
+                      response: str, confidence: float):
+        """
+        Adiciona interação ao histórico da conversa.
+        
+        Args:
+            context: Contexto da conversa
+            message: Mensagem do usuário
+            action: Ação realizada
+            response: Resposta do agente
+            confidence: Confidence score
+        """
+        history_entry = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "user_message": message,
+            "action": action,
+            "response": response,
+            "confidence": confidence,
+            "extracted_data": context.get("extracted_data", {}).copy()
+        }
+        
+        context["conversation_history"].append(history_entry)
+        
+        # Mantém apenas as últimas 10 interações para evitar crescimento excessivo
+        if len(context["conversation_history"]) > 10:
+            context["conversation_history"] = context["conversation_history"][-10:]
     
     def _is_repetition(self, context: Dict[str, Any], new_response: str) -> bool:
         """
@@ -136,32 +178,42 @@ class ConversationManager:
     
     def generate_alternative_response(self, context: Dict[str, Any], missing_fields: List[str]) -> str:
         """
-        Gera uma resposta alternativa quando a abordagem normal não está funcionando.
+        Gera uma resposta alternativa quando deve mudar abordagem.
         
         Args:
             context: Contexto da conversa
-            missing_fields: Campos que ainda faltam
+            missing_fields: Campos faltantes
             
         Returns:
             Resposta alternativa
         """
-        extracted_data = context.get("extracted_data", {})
+        if not missing_fields:
+            return "Perfeito! Tenho todas as informações necessárias. Posso confirmar o agendamento?"
         
-        if context.get("repetition_count", 0) >= self.max_repetitions:
-            # Abordagem mais direta
-            if len(missing_fields) == 1:
-                return f"Vou ser mais direto: preciso do {self.data_summarizer.get_field_display_name(missing_fields[0])}. Pode me informar?"
-            else:
-                return f"Vou simplificar: preciso de {self.data_summarizer.format_missing_fields_for_display(missing_fields)}. Pode me passar essas informações?"
+        # Abordagem mais direta
+        if len(missing_fields) == 1:
+            field = missing_fields[0]
+            field_names = {
+                "nome": "nome completo",
+                "telefone": "telefone",
+                "data": "data",
+                "horario": "horário",
+                "tipo_consulta": "tipo de consulta"
+            }
+            field_name = field_names.get(field, field)
+            return f"Para finalizar, preciso apenas do {field_name}."
         
-        elif context.get("consecutive_asks", 0) >= 3:
-            # Abordagem mais amigável
-            summary = self.data_summarizer.summarize_extracted_data(extracted_data)
-            return f"Vejo que já temos {summary}. Para completar o agendamento, preciso apenas de {self.data_summarizer.format_missing_fields_for_display(missing_fields)}. Pode me ajudar?"
+        # Abordagem mais específica
+        field_names = {
+            "nome": "nome",
+            "telefone": "telefone", 
+            "data": "data",
+            "horario": "horário",
+            "tipo_consulta": "tipo de consulta"
+        }
         
-        else:
-            # Abordagem contextual
-            return self.question_generator.generate_data_summary_question(extracted_data, missing_fields)
+        missing_text = ", ".join([field_names.get(f, f) for f in missing_fields[:2]])
+        return f"Falta apenas: {missing_text}."
     
     def get_conversation_flow_suggestion(self, context: Dict[str, Any], message: str) -> Dict[str, Any]:
         """
@@ -196,14 +248,28 @@ class ConversationManager:
                     "reason": "Usuário pedindo detalhes específicos"
                 }
         
-        # Fluxo normal
+        # Fluxo normal baseado no progresso
         if missing_fields:
-            return {
-                "action": "ask",
-                "approach": "normal",
-                "response": self.question_generator.generate_data_summary_question(extracted_data, missing_fields),
-                "reason": "Fluxo normal - solicitando campos faltantes"
-            }
+            # Verifica se tem dados suficientes para ser mais específico
+            data_progress = context.get("data_progress", {})
+            completed_fields = sum(1 for v in data_progress.values() if v)
+            
+            if completed_fields >= 2:
+                # Já tem alguns dados, pode ser mais específico
+                return {
+                    "action": "ask",
+                    "approach": "progress",
+                    "response": self.question_generator.generate_data_summary_question(extracted_data, missing_fields),
+                    "reason": "Fluxo normal - solicitando campos faltantes com progresso"
+                }
+            else:
+                # Ainda no início, pergunta mais genérica
+                return {
+                    "action": "ask",
+                    "approach": "welcome",
+                    "response": self.question_generator.generate_contextual_question("welcome"),
+                    "reason": "Início da conversa - pergunta genérica"
+                }
         else:
             return {
                 "action": "confirm",
@@ -212,79 +278,26 @@ class ConversationManager:
                 "reason": "Dados completos - solicitando confirmação"
             }
     
-    def add_to_history(self, context: Dict[str, Any], message: str, action: str, response: str, confidence: float = 0.0):
+    def get_conversation_progress(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Adiciona uma interação ao histórico da conversa.
-        
-        Args:
-            context: Contexto da conversa
-            message: Mensagem do usuário
-            action: Ação realizada
-            response: Resposta do sistema
-            confidence: Score de confiança
-        """
-        interaction = {
-            "message": message,
-            "timestamp": datetime.now().isoformat(),
-            "action": action,
-            "response": response,
-            "confidence": confidence
-        }
-        
-        context["conversation_history"].append(interaction)
-        
-        # Limita o histórico para evitar crescimento excessivo
-        if len(context["conversation_history"]) > 20:
-            context["conversation_history"] = context["conversation_history"][-20:]
-    
-    def get_conversation_summary(self, context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Gera um resumo da conversa atual.
+        Retorna o progresso atual da conversa.
         
         Args:
             context: Contexto da conversa
             
         Returns:
-            Resumo da conversa
+            Informações de progresso
         """
-        extracted_data = context.get("extracted_data", {})
-        missing_fields = self.data_summarizer.get_missing_fields(extracted_data)
+        data_progress = context.get("data_progress", {})
+        completed_fields = sum(1 for v in data_progress.values() if v)
+        total_fields = len(data_progress)
         
         return {
-            "session_duration": self._calculate_session_duration(context),
-            "total_interactions": len(context.get("conversation_history", [])),
-            "extracted_fields": len([v for v in extracted_data.values() if v]),
-            "missing_fields": len(missing_fields),
-            "completeness_percentage": self.data_summarizer.get_data_completeness_percentage(extracted_data),
-            "average_confidence": context.get("average_confidence", 0.0),
+            "completed_fields": completed_fields,
+            "total_fields": total_fields,
+            "progress_percentage": (completed_fields / total_fields) * 100 if total_fields > 0 else 0,
+            "missing_fields": self.data_summarizer.get_missing_fields(context.get("extracted_data", {})),
+            "conversation_length": len(context.get("conversation_history", [])),
             "repetition_count": context.get("repetition_count", 0),
             "consecutive_asks": context.get("consecutive_asks", 0)
-        }
-    
-    def _calculate_session_duration(self, context: Dict[str, Any]) -> str:
-        """
-        Calcula a duração da sessão.
-        
-        Args:
-            context: Contexto da conversa
-            
-        Returns:
-            Duração formatada
-        """
-        session_start = context.get("session_start")
-        if not session_start:
-            return "desconhecida"
-        
-        try:
-            start_time = datetime.fromisoformat(session_start)
-            duration = datetime.now() - start_time
-            
-            if duration.total_seconds() < 60:
-                return f"{int(duration.total_seconds())}s"
-            elif duration.total_seconds() < 3600:
-                return f"{int(duration.total_seconds() // 60)}m"
-            else:
-                return f"{int(duration.total_seconds() // 3600)}h {int((duration.total_seconds() % 3600) // 60)}m"
-        except Exception as e:
-            logger.warning(f"Erro ao calcular duração da sessão: {e}")
-            return "desconhecida" 
+        } 

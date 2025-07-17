@@ -8,10 +8,6 @@ class QuestionGenerator:
     """
     
     def __init__(self):
-        """
-        Inicializa o gerador de perguntas com templates e mapeamentos.
-        """
-        # Mapeamento de campos para perguntas amigáveis
         self.field_questions = {
             "nome": "Qual é o nome completo do paciente?",
             "telefone": "Qual é o telefone para contato?", 
@@ -19,8 +15,6 @@ class QuestionGenerator:
             "horario": "Qual horário prefere?",
             "tipo_consulta": "Que tipo de consulta é esta?"
         }
-        
-        # Templates para diferentes contextos
         self.context_templates = {
             "welcome": [
                 "Olá! Vou te ajudar a agendar sua consulta. Para começar, qual é o nome do paciente?",
@@ -31,6 +25,11 @@ class QuestionGenerator:
                 "Ótimo! Agora preciso do {field}.",
                 "Perfeito! Agora me informe o {field}.",
                 "Excelente! Agora preciso saber o {field}."
+            ],
+            "progress_last": [
+                "Agora só falta o {field}!",
+                "Estamos quase lá! Só preciso do {field} para finalizar.",
+                "Para concluir, só falta o {field}."
             ],
             "progress_multiple": [
                 "Já tenho {count} informações. Ainda preciso de: {fields}.",
@@ -56,72 +55,44 @@ class QuestionGenerator:
                 "Perfeito! Agendamento confirmado com sucesso! ✅",
                 "Excelente! Consulta agendada com sucesso! ✅",
                 "Ótimo! Agendamento realizado com sucesso! ✅"
+            ],
+            "specific_request": [
+                "Claro! Preciso especificamente de: {fields}",
+                "Entendi! Para completar, preciso de: {fields}",
+                "Perfeito! Agora preciso de: {fields}"
+            ],
+            "summary_before_confirm": [
+                "Resumo do agendamento: {summary}. Posso confirmar?",
+                "Confira os dados: {summary}. Está tudo correto para confirmar?",
+                "Antes de confirmar, revise: {summary}. Posso agendar?"
             ]
         }
-        
         logger.info("QuestionGenerator inicializado com templates e mapeamentos")
-    
+
     def get_missing_fields_questions(self, missing_fields: List[str], context: Dict[str, Any] = None) -> List[str]:
-        """
-        Gera perguntas específicas para campos faltantes.
-        
-        Args:
-            missing_fields: Lista de campos que ainda precisam ser preenchidos
-            context: Contexto da conversa (opcional)
-            
-        Returns:
-            Lista de perguntas para os campos faltantes
-        """
         questions = []
-        
         for field in missing_fields:
             if field in self.field_questions:
                 questions.append(self.field_questions[field])
             else:
                 questions.append(f"Qual é o {field}?")
-        
         return questions
-    
+
     def generate_contextual_question(self, template_type: str, **kwargs) -> str:
-        """
-        Gera uma pergunta contextual usando templates.
-        
-        Args:
-            template_type: Tipo de template a usar
-            **kwargs: Parâmetros para formatar o template
-            
-        Returns:
-            Pergunta formatada
-        """
         import random
-        
         if template_type not in self.context_templates:
             logger.warning(f"Template type '{template_type}' não encontrado")
             return "Desculpe, não consegui processar sua mensagem."
-        
         templates = self.context_templates[template_type]
         template = random.choice(templates)
-        
         try:
             return template.format(**kwargs)
         except KeyError as e:
             logger.warning(f"Erro ao formatar template {template_type}: {e}")
             return templates[0] if templates else "Desculpe, não consegui processar sua mensagem."
-    
-    def generate_data_summary_question(self, extracted_data: Dict[str, Any], missing_fields: List[str]) -> str:
-        """
-        Gera uma pergunta que resume dados já coletados e solicita campos faltantes.
-        
-        Args:
-            extracted_data: Dados já extraídos
-            missing_fields: Campos que ainda faltam
-            
-        Returns:
-            Pergunta contextual com resumo
-        """
-        # Cria resumo dos dados já coletados
+
+    def generate_data_summary(self, extracted_data: Dict[str, Any]) -> str:
         summary_parts = []
-        
         if extracted_data.get("nome"):
             summary_parts.append(f"nome: {extracted_data['nome']}")
         if extracted_data.get("telefone"):
@@ -132,50 +103,38 @@ class QuestionGenerator:
             summary_parts.append(f"horário: {extracted_data['horario']}")
         if extracted_data.get("tipo_consulta"):
             summary_parts.append(f"tipo: {extracted_data['tipo_consulta']}")
-        
-        summary = ", ".join(summary_parts) if summary_parts else "algumas informações"
-        
-        # Gera perguntas para campos faltantes
+        return ", ".join(summary_parts) if summary_parts else "(sem dados)"
+
+    def generate_data_summary_question(self, extracted_data: Dict[str, Any], missing_fields: List[str]) -> str:
+        summary = self.generate_data_summary(extracted_data)
         missing_questions = self.get_missing_fields_questions(missing_fields)
         missing_text = ", ".join(missing_questions)
-        
         return self.generate_contextual_question("data_summary", summary=summary, missing=missing_text)
-    
-    def generate_specific_question(self, field: str, context: Dict[str, Any] = None) -> str:
-        """
-        Gera uma pergunta específica para um campo.
-        
-        Args:
-            field: Campo para o qual gerar a pergunta
-            context: Contexto da conversa (opcional)
-            
-        Returns:
-            Pergunta específica para o campo
-        """
-        if field in self.field_questions:
-            return self.field_questions[field]
+
+    def generate_progress_question(self, extracted_data: Dict[str, Any], missing_fields: List[str], context: Dict[str, Any] = None) -> str:
+        completed_count = len([v for v in extracted_data.values() if v and str(v).strip()])
+        total_fields = 5
+        if completed_count == 0:
+            return self.generate_contextual_question("welcome")
+        elif completed_count == total_fields - 1 and len(missing_fields) == 1:
+            # Só falta um campo
+            field = missing_fields[0]
+            field_names = {
+                "nome": "nome completo",
+                "telefone": "telefone",
+                "data": "data",
+                "horario": "horário",
+                "tipo_consulta": "tipo de consulta"
+            }
+            field_name = field_names.get(field, field)
+            return self.generate_contextual_question("progress_last", field=field_name)
+        elif completed_count >= 2:
+            return self.generate_data_summary_question(extracted_data, missing_fields)
+        if missing_fields:
+            return self.generate_contextual_question("specific_request", fields=", ".join(missing_fields[:2]))
         else:
-            return f"Qual é o {field}?"
-    
-    def should_ask_specific_question(self, message: str, context: Dict[str, Any]) -> bool:
-        """
-        Determina se deve fazer uma pergunta específica baseada no contexto.
-        
-        Args:
-            message: Mensagem do usuário
-            context: Contexto da conversa
-            
-        Returns:
-            True se deve fazer pergunta específica
-        """
-        # Se o usuário está repetindo a pergunta ou pedindo detalhes
-        message_lower = message.lower()
-        if any(word in message_lower for word in ["detalhes", "específico", "mais", "qual"]):
-            return True
-        
-        # Se a última ação foi perguntar e o usuário não respondeu adequadamente
-        conversation_history = context.get("conversation_history", [])
-        if conversation_history and conversation_history[-1].get("action") == "ask":
-            return True
-        
-        return False 
+            return self.generate_contextual_question("confirmation")
+
+    def generate_summary_before_confirm(self, extracted_data: Dict[str, Any]) -> str:
+        summary = self.generate_data_summary(extracted_data)
+        return self.generate_contextual_question("summary_before_confirm", summary=summary) 

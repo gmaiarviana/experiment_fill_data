@@ -331,7 +331,7 @@ class ReasoningEngine:
     
     async def _extract(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        EXTRACT: Extrai dados da mensagem usando EntityExtractor.
+        EXTRACT: Extrai dados da mensagem usando EntityExtractor com contexto.
         
         Args:
             message (str): Mensagem para extrair dados
@@ -343,8 +343,8 @@ class ReasoningEngine:
         try:
             logger.debug("Executando EXTRACT...")
             
-            # Usa EntityExtractor para extrair dados
-            extraction_result = await self.entity_extractor.extract_consulta_entities(message)
+            # Usa EntityExtractor para extrair dados com contexto
+            extraction_result = await self.entity_extractor.extract_consulta_entities(message, context)
             
             if not extraction_result["success"]:
                 return {
@@ -352,16 +352,12 @@ class ReasoningEngine:
                     "error": extraction_result.get("error", "Falha na extração")
                 }
             
-            # Combina com dados existentes do contexto
-            existing_data = context.get("extracted_data", {})
-            new_data = extraction_result.get("extracted_data", {})
-            
-            # Atualiza dados existentes com novos dados
-            combined_data = {**existing_data, **new_data}
+            # Dados já foram combinados no EntityExtractor
+            extracted_data = extraction_result.get("extracted_data", {})
             
             return {
                 "action": "extract_success",
-                "extracted_data": combined_data,
+                "extracted_data": extracted_data,
                 "confidence_score": extraction_result.get("confidence_score", 0.0),
                 "missing_fields": extraction_result.get("missing_fields", []),
                 "suggested_questions": extraction_result.get("suggested_questions", [])
@@ -410,189 +406,84 @@ class ReasoningEngine:
                    validate_result: Optional[Dict[str, Any]], context: Dict[str, Any]) -> Dict[str, Any]:
         """
         ACT: Decide a resposta final baseada nos resultados anteriores.
-        
-        Args:
-            think_result (Dict[str, Any]): Resultado do THINK
-            extract_result (Optional[Dict[str, Any]]): Resultado do EXTRACT
-            validate_result (Optional[Dict[str, Any]]): Resultado do VALIDATE
-            context (Dict[str, Any]): Contexto da sessão
-            
-        Returns:
-            Dict: Resposta final com ação e dados
         """
         try:
             logger.debug("Executando ACT...")
-            
-            # Se houve erro em qualquer etapa anterior
             if think_result["action"] == "error":
                 return self._create_error_response("Erro na análise", think_result.get("error"))
-            
             if extract_result and extract_result["action"] == "error":
                 return self._create_error_response("Erro na extração", extract_result.get("error"))
-            
             if validate_result and validate_result["action"] == "error":
                 return self._create_error_response("Erro na validação", validate_result.get("error"))
-            
-            # Decide ação baseada no resultado do THINK
-            if think_result["action"] == "ask":
-                return {
-                    "action": "ask",
-                    "response": think_result.get("response", "Preciso de mais informações."),
-                    "next_questions": think_result.get("next_questions", []),
-                    "data": context.get("extracted_data", {}),
-                    "confidence": think_result.get("confidence", 0.0)
-                }
-            
-            elif think_result["action"] == "confirm":
+
+            # Dados extraídos e campos faltantes
+            extracted_data = None
+            missing_fields = []
+            confidence_score = 0.0
+            if validate_result and validate_result.get("extracted_data"):
+                extracted_data = validate_result["extracted_data"]
+                missing_fields = validate_result.get("missing_fields", [])
+                confidence_score = validate_result.get("confidence_score", 0.0)
+            elif extract_result and extract_result.get("extracted_data"):
+                extracted_data = extract_result["extracted_data"]
+                missing_fields = extract_result.get("missing_fields", [])
+                confidence_score = extract_result.get("confidence_score", 0.0)
+            else:
+                extracted_data = {}
+                missing_fields = []
+
+            # Remove campos já preenchidos dos missing_fields
+            missing_fields = [f for f in missing_fields if not (extracted_data.get(f) and str(extracted_data[f]).strip())]
+
+            # Se todos os campos obrigatórios preenchidos, mostra resumo antes de confirmar
+            if not missing_fields and extracted_data and any(extracted_data.values()):
+                response = self.question_generator.generate_summary_before_confirm(extracted_data)
                 return {
                     "action": "confirm",
-                    "response": think_result.get("response", "Posso confirmar os dados?"),
-                    "data": context.get("extracted_data", {}),
-                    "confidence": think_result.get("confidence", 0.0)
+                    "response": response,
+                    "data": extracted_data,
+                    "confidence": confidence_score
                 }
-            
-            elif think_result["action"] == "extract":
-                # Se extraiu dados, analisa resultado usando EXTRACT + VALIDATE
-                if extract_result and extract_result["action"] == "extract_success":
-                    # Usa dados validados se disponível, senão usa dados extraídos
-                    if validate_result and validate_result["action"] == "validate_success":
-                        final_data = validate_result.get("normalized_data", {})
-                        validation_confidence = validate_result.get("confidence_score", 0.0)
-                        validation_errors = validate_result.get("validation_errors", [])
-                        
-                        # Combina confidence da extração e validação
-                        extract_confidence = extract_result.get("confidence_score", 0.0)
-                        combined_confidence = (extract_confidence + validation_confidence) / 2
-                        
-                        logger.debug(f"Dados validados: {final_data}, Confidence: {combined_confidence}")
-                        
-                        # Se tem erros de validação, pergunta para corrigir de forma mais amigável
-                        if validation_errors:
-                            # Cria resposta mais amigável sobre os problemas
-                            extracted_summary = self.data_summarizer.summarize_extracted_data(final_data)
-                            validation_issues = self.data_summarizer.format_validation_errors(validation_errors)
-                            
-                            response = f"Ótimo! {extracted_summary}. Mas encontrei alguns problemas: {validation_issues}. Pode corrigir?"
-                            
-                            return {
-                                "action": "ask",
-                                "response": response,
-                                "next_questions": [f"Corrija: {error}" for error in validation_errors[:2]],
-                                "data": final_data,
-                                "confidence": combined_confidence,
-                                "validation_errors": validation_errors
-                            }
-                        
-                        # Verifica se dados estão completos após validação
-                        if self.data_summarizer.is_data_complete(final_data):
-                            return {
-                                "action": "complete",
-                                "response": self.question_generator.generate_contextual_question("complete"),
-                                "data": final_data,
-                                "confidence": combined_confidence
-                            }
-                        
-                        # Se não está completo, usa ConversationManager para gerar resposta
-                        missing_fields = self.data_summarizer.get_missing_fields(final_data)
-                        if missing_fields:
-                            # Usa ConversationManager para evitar repetições
-                            flow_suggestion = self.conversation_manager.get_conversation_flow_suggestion(context, "")
-                            
-                            return {
-                                "action": flow_suggestion["action"],
-                                "response": flow_suggestion["response"],
-                                "next_questions": self.question_generator.get_missing_fields_questions(missing_fields),
-                                "data": final_data,
-                                "confidence": combined_confidence
-                            }
-                        
-                        # Dados insuficientes mesmo após validação
-                        return {
-                            "action": "ask",
-                            "response": "Entendi! Pode me fornecer mais detalhes sobre o agendamento?",
-                            "next_questions": [
-                                "Qual é o nome completo do paciente?",
-                                "Qual é o telefone para contato?",
-                                "Para qual data você gostaria de agendar?"
-                            ],
-                            "data": final_data,
-                            "confidence": combined_confidence
-                        }
-                    
-                    else:
-                        # Usa dados extraídos sem validação
-                        extracted_data = extract_result["extracted_data"]
-                        confidence_score = extract_result.get("confidence_score", 0.0)
-                        missing_fields = extract_result.get("missing_fields", [])
-                        
-                        # Verifica se dados estão completos
-                        if self.data_summarizer.is_data_complete(extracted_data):
-                            return {
-                                "action": "confirm",
-                                "response": "Tenho as informações! Posso confirmar o agendamento?",
-                                "data": extracted_data,
-                                "confidence": confidence_score
-                            }
-                        
-                        # Se tem dados mas faltam campos, usa ConversationManager
-                        if extracted_data and missing_fields:
-                            flow_suggestion = self.conversation_manager.get_conversation_flow_suggestion(context, "")
-                            
-                            return {
-                                "action": flow_suggestion["action"],
-                                "response": flow_suggestion["response"],
-                                "next_questions": extract_result.get("suggested_questions", [])[:2],
-                                "data": extracted_data,
-                                "confidence": confidence_score
-                            }
-                        
-                        # Se extração foi bem-sucedida mas dados insuficientes
-                        if extracted_data:
-                            # Temos alguns dados, vamos ser mais específicos
-                            extracted_summary = self.data_summarizer.summarize_extracted_data(extracted_data)
-                            response = f"Ótimo! {extracted_summary}. Para completar o agendamento, preciso de mais algumas informações."
-                        else:
-                            # Não extraímos nada, vamos começar do básico
-                            response = self.question_generator.generate_contextual_question("welcome")
-                        
-                        return {
-                            "action": "ask",
-                            "response": response,
-                            "next_questions": [
-                                "Qual é o nome completo do paciente?",
-                                "Qual é o telefone para contato?",
-                                "Para qual data você gostaria de agendar?"
-                            ],
-                            "data": extracted_data,
-                            "confidence": confidence_score
-                        }
-                
-                # Se extração falhou
-                else:
-                    return {
-                        "action": "ask",
-                        "response": "Não consegui entender completamente. Pode reformular?",
-                        "next_questions": [
-                            "Qual é o nome do paciente?",
-                            "Qual é o telefone?",
-                            "Para quando é o agendamento?"
-                        ],
-                        "data": {},
-                        "confidence": 0.0
-                    }
-            
-            # Ação padrão
+
+            # Se só falta um campo, pergunta progressiva
+            if len(missing_fields) == 1:
+                response = self.question_generator.generate_progress_question(extracted_data, missing_fields, context)
+                return {
+                    "action": "ask",
+                    "response": response,
+                    "next_questions": [self.question_generator.get_missing_fields_questions(missing_fields)[0]],
+                    "data": extracted_data,
+                    "confidence": confidence_score
+                }
+
+            # Se tem dados mas faltam campos, usa pergunta progressiva
+            if extracted_data and missing_fields:
+                response = self.question_generator.generate_progress_question(
+                    extracted_data, missing_fields, context
+                )
+                return {
+                    "action": "ask",
+                    "response": response,
+                    "next_questions": self.question_generator.get_missing_fields_questions(missing_fields)[:2],
+                    "data": extracted_data,
+                    "confidence": confidence_score
+                }
+
+            # Dados insuficientes mesmo após validação
             return {
                 "action": "ask",
-                "response": "Como posso ajudar com o agendamento?",
-                "next_questions": ["Qual é o nome do paciente?"],
-                "data": {},
-                "confidence": 0.0
+                "response": "Entendi! Pode me fornecer mais detalhes sobre o agendamento?",
+                "next_questions": [
+                    "Qual é o nome completo do paciente?",
+                    "Qual é o telefone para contato?",
+                    "Para qual data você gostaria de agendar?"
+                ],
+                "data": extracted_data,
+                "confidence": confidence_score
             }
-            
         except Exception as e:
             logger.error(f"Erro no ACT: {str(e)}")
-            return self._create_error_response("Erro na decisão final", str(e))
+            return self._create_error_response("Erro interno no ACT", str(e))
     
     def _create_error_response(self, message: str, error: str = None) -> Dict[str, Any]:
         """
