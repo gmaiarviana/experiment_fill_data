@@ -110,6 +110,33 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
+## 🚧 **ETAPA EXTRA: MODULARIZAÇÃO E CORREÇÃO DE DÉBITO TÉCNICO (PRIORIDADE)**
+
+**Objetivo:**  
+Destravar a evolução do sistema conversacional, corrigindo loops, repetições e facilitando a manutenção e escalabilidade do código.
+
+**Motivação:**  
+Apesar das melhorias recentes, a conversa ainda apresenta travamentos e repetições quando o usuário fornece dados em etapas ou de forma não linear. Para destravar a evolução e facilitar a correção desses problemas, é fundamental modularizar o código.
+
+**Ações Prioritárias:**
+- Extrair a lógica de geração de perguntas para um módulo próprio (`question_generator.py`)
+- Extrair a lógica de sumarização de dados para um módulo próprio (`data_summarizer.py`)
+- Centralizar templates e variações em um módulo dedicado (`response_templates.py`)
+- Implementar um gestor de estado/conversa para evitar loops e repetições
+- Refatorar o ReasoningEngine para delegar responsabilidades
+
+**Benefícios Esperados:**
+- Facilitar a evolução do fluxo conversacional
+- Corrigir rapidamente loops e repetições
+- Permitir testes e ajustes isolados em cada componente
+- Tornar o sistema mais escalável e sustentável
+
+**Status:**  
+**PRIORIDADE TÉCNICA** para o próximo ciclo de desenvolvimento.  
+Correção de débito técnico essencial para destravar novas features e melhorar a experiência do usuário.
+
+---
+
 ## 🎯 **ETAPA 5: MEMORY CONVERSACIONAL - PLANEJADA**
 
 **Objetivo**: Sistema mantém contexto durante sessões de conversa.

@@ -3,6 +3,7 @@ from datetime import datetime
 from loguru import logger
 from src.core.entity_extraction import EntityExtractor
 from src.core.data_normalizer import normalize_consulta_data
+import random
 
 
 class ReasoningEngine:
@@ -16,7 +17,70 @@ class ReasoningEngine:
         Inicializa o motor de raciocínio com o extrator de entidades.
         """
         self.entity_extractor = EntityExtractor()
-        logger.info("ReasoningEngine inicializado com EntityExtractor")
+        
+        # Templates de resposta para tornar o diálogo mais natural
+        self.response_templates = {
+            "welcome": [
+                "Olá! Vou te ajudar a agendar sua consulta. Para começar, qual é o nome do paciente?",
+                "Oi! Vou te auxiliar no agendamento. Primeiro, preciso saber o nome do paciente.",
+                "Perfeito! Vamos agendar sua consulta. Qual é o nome completo do paciente?"
+            ],
+            "progress_single": [
+                "Ótimo! Agora preciso do {field}.",
+                "Perfeito! Agora me informe o {field}.",
+                "Excelente! Agora preciso saber o {field}."
+            ],
+            "progress_multiple": [
+                "Já tenho {count} informações. Ainda preciso de: {fields}.",
+                "Ótimo progresso! Com {count} dados coletados, agora preciso de: {fields}.",
+                "Perfeito! Já tenho {count} informações. Falta apenas: {fields}."
+            ],
+            "data_summary": [
+                "Perfeito! {summary}. Agora preciso de: {missing}.",
+                "Excelente! {summary}. Para completar, preciso de: {missing}.",
+                "Ótimo! {summary}. Ainda preciso de: {missing}."
+            ],
+            "confirmation": [
+                "Perfeito! Tenho todas as informações. Posso confirmar o agendamento?",
+                "Excelente! Agendamento completo. Posso prosseguir com a confirmação?",
+                "Ótimo! Tenho todos os dados necessários. Posso confirmar?"
+            ],
+            "complete": [
+                "Perfeito! Agendamento confirmado com sucesso! ✅",
+                "Excelente! Consulta agendada com sucesso! ✅",
+                "Ótimo! Agendamento realizado com sucesso! ✅"
+            ],
+            "correction": [
+                "Entendi, vou corrigir. Pode me informar novamente os dados corretos?",
+                "Claro! Vou ajustar. Pode me passar as informações corretas?",
+                "Perfeito! Vou corrigir. Pode me informar os dados certos?"
+            ]
+        }
+        
+        logger.info("ReasoningEngine inicializado com EntityExtractor e templates de resposta")
+    
+    def _get_response_template(self, template_type: str, **kwargs) -> str:
+        """
+        Gera uma resposta usando templates para tornar o diálogo mais natural.
+        
+        Args:
+            template_type (str): Tipo de template a usar
+            **kwargs: Parâmetros para formatar o template
+            
+        Returns:
+            str: Resposta formatada
+        """
+        if template_type not in self.response_templates:
+            return "Desculpe, não consegui processar sua mensagem."
+        
+        templates = self.response_templates[template_type]
+        template = random.choice(templates)
+        
+        try:
+            return template.format(**kwargs)
+        except KeyError as e:
+            logger.warning(f"Erro ao formatar template {template_type}: {e}")
+            return templates[0] if templates else "Desculpe, não consegui processar sua mensagem."
     
     async def process_message(self, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -114,6 +178,21 @@ class ReasoningEngine:
             conversation_history = context.get("conversation_history", [])
             existing_data = context.get("extracted_data", {})
             
+            # Evita respostas repetitivas - verifica se a última resposta foi similar
+            if conversation_history:
+                last_response = conversation_history[-1].get("response", "").lower()
+                if "fornecer mais detalhes" in last_response and "fornecer mais detalhes" in message_lower:
+                    # Se o usuário está repetindo a pergunta, dar resposta mais específica
+                    missing_fields = self._get_missing_fields(existing_data)
+                    if missing_fields:
+                        return {
+                            "action": "ask",
+                            "reason": "Usuário pedindo detalhes específicos",
+                            "response": f"Claro! Preciso saber: {', '.join(missing_fields[:2])}. Pode me informar?",
+                            "next_questions": self.get_missing_fields_questions(missing_fields[:2]),
+                            "confidence": 0.9
+                        }
+            
             # Verifica se é uma confirmação (considera contexto)
             confirmation_words = ["sim", "confirmo", "correto", "certo", "ok", "perfeito", "confirma"]
             if any(word in message_lower for word in confirmation_words):
@@ -175,20 +254,46 @@ class ReasoningEngine:
                 return {
                     "action": "confirm",
                     "reason": "Dados completos, solicitando confirmação",
-                    "response": "Perfeito! Tenho todas as informações. Posso confirmar o agendamento?",
+                    "response": self._get_response_template("confirmation"),
                     "confidence": 0.9
                 }
             
-            # Verifica campos faltantes
+            # Verifica campos faltantes e cria resposta contextual
             missing_fields = self._get_missing_fields(existing_data)
             if missing_fields:
-                return {
-                    "action": "ask",
-                    "reason": f"Faltam campos: {missing_fields}",
-                    "response": "Preciso de mais algumas informações para completar o agendamento.",
-                    "next_questions": self.get_missing_fields_questions(missing_fields),
-                    "confidence": 0.8
-                }
+                # Cria resposta mais específica baseada no contexto
+                if len(existing_data) == 0:
+                    # Primeira interação
+                    return {
+                        "action": "ask",
+                        "reason": "Primeira interação - coletando dados básicos",
+                        "response": self._get_response_template("welcome"),
+                        "next_questions": self.get_missing_fields_questions(missing_fields[:1]),
+                        "confidence": 0.8
+                    }
+                elif len(existing_data) == 1:
+                    # Temos um dado, vamos para o próximo
+                    next_field = missing_fields[0]
+                    field_name = self._get_field_display_name(next_field)
+                    return {
+                        "action": "ask",
+                        "reason": f"Temos {len(existing_data)} dado(s), pedindo {next_field}",
+                        "response": self._get_response_template("progress_single", field=field_name),
+                        "next_questions": self.get_missing_fields_questions(missing_fields[:1]),
+                        "confidence": 0.8
+                    }
+                else:
+                    # Temos vários dados, mostrar progresso
+                    missing_display = [self._get_field_display_name(field) for field in missing_fields[:2]]
+                    return {
+                        "action": "ask",
+                        "reason": f"Progresso: {len(existing_data)} dados coletados",
+                        "response": self._get_response_template("progress_multiple", 
+                                                               count=len(existing_data), 
+                                                               fields=", ".join(missing_display)),
+                        "next_questions": self.get_missing_fields_questions(missing_fields[:2]),
+                        "confidence": 0.8
+                    }
             
             # Primeira mensagem ou dados insuficientes
             if len(existing_data) < 2 or not conversation_history:
@@ -224,14 +329,30 @@ class ReasoningEngine:
         """
         message_lower = message.lower()
         
+        # Palavras-chave que indicam dados específicos
+        data_keywords = {
+            "nome": ["nome", "chama", "sou", "meu nome", "paciente"],
+            "telefone": ["telefone", "celular", "whatsapp", "contato", "número"],
+            "data": ["data", "dia", "amanhã", "hoje", "próxima semana", "mês"],
+            "horario": ["horário", "hora", "horas", "às", "para"],
+            "tipo": ["consulta", "retorno", "primeira", "rotina", "urgente", "checkup"]
+        }
+        
+        # Verifica se a mensagem contém palavras-chave de dados
+        for field, keywords in data_keywords.items():
+            if any(keyword in message_lower for keyword in keywords):
+                return True
+        
         # Padrões que indicam dados
+        import re
         data_patterns = [
-            # Nomes
-            r'\b[a-z]{2,}\s+[a-z]{2,}\b',  # Duas palavras (nome completo)
+            # Nomes (pelo menos duas palavras com 2+ letras)
+            r'\b[a-z]{2,}\s+[a-z]{2,}\b',
             
-            # Telefones
+            # Telefones (diferentes formatos)
             r'\b\d{10,11}\b',  # 10-11 dígitos
-            r'\b\(\d{2}\)\s*\d{4,5}-\d{4}\b',  # Formato (11) 99999-9999
+            r'\b\(\d{2}\)\s*\d{4,5}-\d{4}\b',  # (11) 99999-9999
+            r'\b\d{2}\s*\d{4,5}-\d{4}\b',  # 11 99999-9999
             
             # Datas
             r'\b\d{1,2}/\d{1,2}/\d{2,4}\b',  # DD/MM/YYYY
@@ -241,12 +362,10 @@ class ReasoningEngine:
             # Horários
             r'\b\d{1,2}:\d{2}\b',  # HH:MM
             r'\b\d{1,2}h\b',  # 14h
+            r'\b\d{1,2}\s*horas?\b',  # 14 horas
             
-            # Tipos de consulta
-            r'\b(consulta|retorno|primeira consulta|rotina|urgente)\b',
-            
-            # Palavras-chave que indicam dados
-            r'\b(nome|telefone|data|horário|consulta|agendar|marcar)\b'
+            # Expressões temporais
+            r'\b(às|para|no dia|na data)\b'
         ]
         
         import re
@@ -431,7 +550,7 @@ class ReasoningEngine:
                         if self.is_data_complete(final_data):
                             return {
                                 "action": "complete",
-                                "response": "Perfeito! Agendamento confirmado com sucesso.",
+                                "response": self._get_response_template("complete"),
                                 "data": final_data,
                                 "confidence": combined_confidence
                             }
@@ -483,18 +602,32 @@ class ReasoningEngine:
                         
                         # Se tem dados mas faltam campos
                         if extracted_data and missing_fields:
+                            # Cria resposta mais específica baseada no que já tem
+                            extracted_summary = self._summarize_extracted_data(extracted_data)
+                            missing_fields_display = [self._get_field_display_name(field) for field in missing_fields[:2]]
+                            
+                            response = f"Perfeito! {extracted_summary}. Agora preciso de: {', '.join(missing_fields_display)}."
+                            
                             return {
                                 "action": "ask",
-                                "response": "Ótimo! Agora preciso de mais algumas informações.",
+                                "response": response,
                                 "next_questions": extract_result.get("suggested_questions", [])[:2],
                                 "data": extracted_data,
                                 "confidence": confidence_score
                             }
                         
                         # Se extração foi bem-sucedida mas dados insuficientes
+                        if extracted_data:
+                            # Temos alguns dados, vamos ser mais específicos
+                            extracted_summary = self._summarize_extracted_data(extracted_data)
+                            response = f"Ótimo! {extracted_summary}. Para completar o agendamento, preciso de mais algumas informações."
+                        else:
+                            # Não extraímos nada, vamos começar do básico
+                            response = "Vou te ajudar a agendar a consulta! Para começar, qual é o nome do paciente?"
+                        
                         return {
                             "action": "ask",
-                            "response": "Entendi! Pode me fornecer mais detalhes sobre o agendamento?",
+                            "response": response,
                             "next_questions": [
                                 "Qual é o nome completo do paciente?",
                                 "Qual é o telefone para contato?",
@@ -768,7 +901,7 @@ class ReasoningEngine:
     
     def _summarize_extracted_data(self, data: Dict[str, Any]) -> str:
         """
-        Cria resumo dos dados extraídos em formato de texto amigável.
+        Cria resumo dos dados extraídos em formato de texto amigável e contextual.
         
         Args:
             data (Dict[str, Any]): Dados extraídos
@@ -778,27 +911,67 @@ class ReasoningEngine:
         """
         extracted_items = []
         
+        # Nome do paciente
         if data.get("name"):
-            extracted_items.append(f"nome: {data['name']}")
+            name = data['name']
+            if len(name.split()) >= 2:
+                extracted_items.append(f"nome do paciente: {name}")
+            else:
+                extracted_items.append(f"nome: {name}")
         
+        # Telefone
         if data.get("phone"):
-            extracted_items.append(f"telefone: {data['phone']}")
+            phone = data['phone']
+            # Formata telefone de forma mais amigável
+            if len(phone) == 11:
+                formatted_phone = f"({phone[:2]}) {phone[2:7]}-{phone[7:]}"
+            elif len(phone) == 10:
+                formatted_phone = f"({phone[:2]}) {phone[2:6]}-{phone[6:]}"
+            else:
+                formatted_phone = phone
+            extracted_items.append(f"telefone: {formatted_phone}")
         
+        # Data da consulta
         if data.get("consulta_date"):
-            extracted_items.append(f"data: {data['consulta_date']}")
+            date = data['consulta_date']
+            # Converte data para formato mais amigável
+            try:
+                from datetime import datetime
+                if '-' in date:
+                    date_obj = datetime.strptime(date, '%Y-%m-%d')
+                    formatted_date = date_obj.strftime('%d/%m/%Y')
+                else:
+                    formatted_date = date
+                extracted_items.append(f"data: {formatted_date}")
+            except:
+                extracted_items.append(f"data: {date}")
         
+        # Horário
         if data.get("horario"):
-            extracted_items.append(f"horário: {data['horario']}")
+            horario = data['horario']
+            # Formata horário de forma mais amigável
+            if ':' in horario:
+                extracted_items.append(f"horário: {horario}")
+            else:
+                extracted_items.append(f"horário: {horario}")
         
+        # Tipo de consulta
         if data.get("tipo_consulta"):
-            extracted_items.append(f"tipo de consulta: {data['tipo_consulta']}")
+            tipo = data['tipo_consulta']
+            extracted_items.append(f"tipo: {tipo}")
         
+        # Gera resumo contextual baseado no número de itens
         if not extracted_items:
-            return "não extraí nenhuma informação ainda"
+            return "ainda não tenho informações sobre o agendamento"
         elif len(extracted_items) == 1:
-            return f"extraí o {extracted_items[0]}"
+            return f"já tenho o {extracted_items[0]}"
+        elif len(extracted_items) == 2:
+            return f"já tenho: {extracted_items[0]} e {extracted_items[1]}"
         else:
-            return f"extraí: {', '.join(extracted_items)}"
+            # Para 3 ou mais itens, agrupa de forma mais natural
+            first_items = extracted_items[:-1]
+            last_item = extracted_items[-1]
+            return f"já tenho: {', '.join(first_items)} e {last_item}"
     
     def _get_field_display_name(self, field: str) -> str:
         """

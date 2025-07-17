@@ -86,7 +86,7 @@ class EntityExtractor:
             # Adiciona informações específicas sobre campos faltantes
             missing_fields = result["missing_fields"]
             
-            # Mapeia campos para perguntas amigáveis
+            # Mapeia campos para perguntas amigáveis e contextuais
             field_questions = {
                 "nome": "Qual é o nome completo do paciente?",
                 "telefone": "Qual é o telefone para contato?", 
@@ -95,13 +95,43 @@ class EntityExtractor:
                 "tipo_consulta": "Que tipo de consulta é esta?"
             }
             
-            suggested_questions = [
-                field_questions[field] for field in missing_fields 
-                if field in field_questions
-            ]
+            # Gera perguntas mais específicas baseadas no contexto
+            suggested_questions = []
+            for field in missing_fields:
+                if field in field_questions:
+                    suggested_questions.append(field_questions[field])
+                else:
+                    suggested_questions.append(f"Qual é o {field}?")
             
             result["suggested_questions"] = suggested_questions
             result["is_complete"] = len(missing_fields) == 0
+            
+            # Calcula confidence score baseado na qualidade dos dados extraídos
+            extracted_data = result["extracted_data"]
+            confidence_factors = []
+            
+            # Fator 1: Número de campos extraídos
+            extracted_count = len([v for v in extracted_data.values() if v])
+            if extracted_count > 0:
+                confidence_factors.append(min(0.8, extracted_count * 0.2))
+            
+            # Fator 2: Qualidade dos dados (validação)
+            if not result.get("validation_errors"):
+                confidence_factors.append(0.2)
+            
+            # Fator 3: Completude dos dados obrigatórios
+            required_fields = ["name", "phone", "consulta_date", "horario"]
+            required_count = sum(1 for field in required_fields if extracted_data.get(field))
+            if required_count > 0:
+                confidence_factors.append(min(0.3, required_count * 0.1))
+            
+            # Calcula confidence final
+            if confidence_factors:
+                calculated_confidence = sum(confidence_factors)
+                # Usa o maior entre o calculado e o original
+                result["confidence_score"] = max(result["confidence_score"], calculated_confidence)
+            
+            logger.info(f"Confidence score final: {result['confidence_score']:.2f}")
         
         return result
     
