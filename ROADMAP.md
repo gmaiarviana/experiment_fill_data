@@ -20,26 +20,6 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## ❌ **ETAPA 2: INTERFACE VISUAL N8N - DEPRECADA**
-
-**Objetivo**: Interface visual para conversação via workflows N8N, mantendo FastAPI como backend.
-
-**Status**: DEPRECADA - Substituída pela Etapa 4 (Interface React)
-
-**Funcionalidades Implementadas (mantidas para referência):**
-- ✅ **Setup N8N Completo**: Container + API + Networking funcionando
-- ✅ **Interface Visual**: N8N acessível em localhost:5678 com Basic Auth  
-- ✅ **Workflow Chat Completo**: 3 nodes (Webhook → FastAPI → Response)
-- ✅ **Backend Control**: N8N API Client + Workflow Manager para list/validate
-- ✅ **Environment Setup**: Docker-compose + API key + volumes configurados
-- ✅ **Versionamento**: Workflows como JSON versionados no git
-
-**Resultado Alcançado**: Interface visual N8N operacional com chat completo via webhook. Backend control implementado via API para list/validate workflows. Environment setup Docker completo com versionamento de workflows.
-
-**Motivo da Deprecação**: Decisão arquitetural de focar em interface React nativa para melhor experiência do usuário e controle total sobre a interface conversacional.
-
----
-
 ## ✅ **ETAPA 3: EXTRAÇÃO INTELIGENTE - CONCLUÍDA**
 
 **Objetivo**: Sistema extrai dados estruturados de conversas naturais usando abordagem híbrida LLM + código, com persistência automática e framework extensível.
@@ -53,8 +33,6 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - ✅ **Complete Chat Integration**: Sistema conversacional completo com session management e persistência
 
 **Resultado Alcançado**: Sistema conversacional que converte linguagem natural em dados estruturados automaticamente, persiste registros organizados e mantém conversação natural com context awareness.
-
-
 
 ---
 
@@ -110,29 +88,64 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ---
 
-## ✅ **ETAPA EXTRA: MODULARIZAÇÃO E CORREÇÃO DE DÉBITO TÉCNICO - CONCLUÍDA**
+## 🎯 **ETAPA 5: CONVERSAÇÃO NATURAL - PLANEJADA**
 
-**Objetivo:**  
-Destravar a evolução do sistema conversacional, corrigindo loops, repetições e facilitando a manutenção e escalabilidade do código.
+**Objetivo**: Transformar o sistema de robótico para fluido e natural, focando na experiência do usuário final sem comprometer a arquitetura técnica.
 
-**Funcionalidades Implementadas:**
-- ✅ **QuestionGenerator**: Módulo dedicado para geração de perguntas contextuais e templates de resposta
-- ✅ **DataSummarizer**: Módulo para sumarização de dados e verificação de completude
-- ✅ **ConversationManager**: Gestor de estado/conversa para evitar loops e repetições
-- ✅ **ReasoningEngine Refatorado**: Motor de raciocínio modularizado com delegação de responsabilidades
-- ✅ **Correção de Bugs**: Resolvido erro de 'consecutive_asks' e outros problemas de contexto
+**Funcionalidades Planejadas:**
 
-**Benefícios Alcançados:**
-- Sistema conversacional mais estável e sem loops
-- Código modular e fácil de manter
-- Componentes isolados para testes e ajustes
-- Melhor experiência do usuário com respostas mais naturais
+### Funcionalidade 5.1: Modularização do ReasoningEngine
+**Critérios de Aceite:**
+- Refatorar `ReasoningEngine` (600+ linhas) em módulos especializados
+- Criar `src/core/reasoning/` com componentes modulares:
+  - `reasoning_coordinator.py`: Orquestra Think→Extract→Validate→Act
+  - `llm_strategist.py`: Strategy pattern para LLM reasoning
+  - `conversation_flow.py`: Gerencia fluxo natural da conversa
+  - `response_composer.py`: Compõe respostas naturais e contextuais
+  - `fallback_handler.py`: Lógica Python quando LLM falha
+- Manter compatibilidade 100% com sistema atual
+- Código mais limpo, testável e fácil de manter
+- Zero breaking changes na API existente
 
-**Resultado Alcançado**: Sistema conversacional modularizado e funcional, com arquitetura limpa e código sustentável para futuras evoluções.
+### Funcionalidade 5.2: Processamento Inteligente de Datas e Horários
+**Critérios de Aceite:**
+- Processar expressões naturais automaticamente:
+  - "amanhã" → data específica calculada
+  - "próxima sexta" → data correta identificada
+  - "semana que vem" → range de datas válidas
+  - "de manhã", "à tarde" → horários sugeridos
+- Validação contextual (não permitir datas passadas)
+- Confirmação automática quando ambíguo ("manhã = 9h ou 10h?")
+- Integração transparente com sistema de normalização existente
+- Usuário nunca vê dados "brutos" - só confirmação final
+
+### Funcionalidade 5.3: Respostas Naturais e Contextuais
+**Critérios de Aceite:**
+- Eliminar respostas "técnicas" com dados extraídos explícitos
+- Progressão contextual fluida:
+  ```
+  ❌ "Já tenho: nome: João Silva, telefone: (11) 99999-9999. Ainda preciso de: data, horário"
+  ✅ "Perfeito, João! Para qual data você gostaria de agendar?"
+  ```
+- Sistema "lembra" do contexto sem repetir informações
+- Confirmação final apresenta resumo organizado
+- Tom conversacional amigável e profissional
+- Variação nas respostas (não robotizado)
+
+### Funcionalidade 5.4: Fluxo Conversacional Otimizado
+**Critérios de Aceite:**
+- Detecção inteligente de intenção sem perguntas desnecessárias
+- Antecipação de próximos passos baseada no contexto
+- Correções e mudanças tratadas naturalmente
+- Confirmação inteligente apenas quando necessário
+- Zero loops de perguntas repetitivas
+- Experiência similar a WhatsApp Business
+
+**Resultado Esperado**: Sistema conversacional indistinguível de atendimento humano qualificado, mantendo toda a robustez técnica com experiência do usuário superior.
 
 ---
 
-## 🎯 **ETAPA 5: MEMORY CONVERSACIONAL - PLANEJADA**
+## 🎯 **ETAPA 6: MEMORY CONVERSACIONAL - PLANEJADA**
 
 **Objetivo**: Sistema mantém contexto durante sessões de conversa.
 
@@ -149,7 +162,7 @@ Destravar a evolução do sistema conversacional, corrigindo loops, repetições
 
 ## 🔮 **PRÓXIMAS ETAPAS FUTURAS**
 
-### **ETAPA 6: Memory Persistente Cross-Session**
+### **ETAPA 7: Memory Persistente Cross-Session**
 **Objetivo**: Sistema lembra usuário entre conversas diferentes, aprendizado contínuo.
 
 **Capacidades Planejadas:**
@@ -159,7 +172,7 @@ Destravar a evolução do sistema conversacional, corrigindo loops, repetições
 - Feedback loop para melhorias
 - Personalização automática
 
-### **ETAPA 7: Múltiplas Ações e Workflows**
+### **ETAPA 8: Múltiplas Ações e Workflows**
 **Objetivo**: Sistema versátil com capacidade de executar diferentes tipos de ação.
 
 **Capacidades Planejadas:**
@@ -169,7 +182,7 @@ Destravar a evolução do sistema conversacional, corrigindo loops, repetições
 - Validações de negócio avançadas
 - Management interface completa
 
-### **ETAPA 8: Extensibilidade Multi-Domínio**
+### **ETAPA 9: Extensibilidade Multi-Domínio**
 **Objetivo**: Plataforma extensível para outros domínios além de consultas médicas.
 
 **Capacidades Planejadas:**
