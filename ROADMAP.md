@@ -60,17 +60,42 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 
 ## 🎯 **ETAPA 4: INTERFACE CONVERSACIONAL - PRÓXIMA ETAPA**
 
-**Objetivo**: Interface visual limpa para conversação fluida com feedback em tempo real dos dados extraídos.
+**Objetivo**: Interface visual MVP para conversação com transparência total do agente, permitindo ver o reasoning loop e dados estruturados em tempo real.
 
-**Capacidades Planejadas:**
-- Chat interface responsiva e mobile-friendly
-- Visualização em tempo real dos dados sendo extraídos
-- Progress feedback com % de completude e campos faltantes
-- Cards visuais mostrando dados estruturados lado a lado com conversa
-- Confidence score visual e status da extração
-- Single-page application focada apenas na conversação
+**Funcionalidades Planejadas:**
 
-**Resultado Esperado**: Interface conversacional fluida onde usuários normais conseguem conversar naturalmente e ver dados sendo extraídos em tempo real, criando experiência demonstrável e profissional.
+### **Funcionalidade 4.1: Interface de Chat Básica**
+**Critérios de Aceite:**
+- Interface de chat responsiva com input de mensagem e histórico de conversa
+- Indicador visual de "processando" durante extração pelo agente
+- Design limpo e mobile-friendly sem complexidade visual desnecessária
+- Integração básica com endpoint `/chat/message` do FastAPI
+
+### **Funcionalidade 4.2: Painel de Debug do Reasoning Loop**
+**Critérios de Aceite:**
+- Painel lateral mostrando os 4 passos do reasoning (Think → Extract → Validate → Act) em tempo real
+- Logs detalhados com timestamps de cada etapa do processo
+- Status visual de cada passo (running/completed/error) com indicadores de cor
+- Exibição apenas do último ciclo completo de reasoning (sem persistência histórica)
+- Detalhes relevantes incluídos: entidades extraídas, campos faltantes, ações tomadas
+
+### **Funcionalidade 4.3: Painel de Dados Estruturados**
+**Critérios de Aceite:**
+- Painel lateral mostrando dados sendo extraídos em tempo real
+- Campos obrigatórios vs opcionais claramente identificados
+- Confidence score visual (0-100%) com indicadores de cor para cada campo
+- Status de validação (✓/❌/⏳) para cada campo extraído
+- Exibição apenas de dados finais normalizados (sem dados brutos)
+
+### **Funcionalidade 4.4: Integração Backend e Polling Inteligente**
+**Critérios de Aceite:**
+- Integração HTTP REST simples com FastAPI (sem WebSocket inicial)
+- Polling inteligente: 500ms durante processamento, 2s em idle
+- Session management básico com session_id automático
+- Tratamento de erros simples com retry automático
+- Layout de 3 colunas responsivo (Chat | Reasoning | Dados)
+
+**Resultado Esperado**: Interface MVP que permite conversar naturalmente com o agente enquanto visualiza seu processo de reasoning e acompanha dados sendo extraídos em tempo real, criando transparência total para debugging e demonstração.
 
 ---
 

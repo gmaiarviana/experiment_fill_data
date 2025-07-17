@@ -27,9 +27,10 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 
 ### **Interface e Acesso aos Dados**
 - **PostgREST**: API REST automática para acesso direto aos dados
-- **React (etapa 4)**: Interface web conversacional para interação natural
-- **Webhooks**: Formulários web para input do usuário
-- **HTTP Integration**: Interface chama FastAPI via `http://api:8000`
+- **React 18 + TypeScript**: Interface web conversacional MVP com transparência do agente
+- **Vite**: Build tool para desenvolvimento rápido e hot reload
+- **Tailwind CSS**: Styling responsivo e moderno
+- **HTTP REST**: Interface chama FastAPI via `http://api:8000` com polling inteligente
 
 ### **Bibliotecas Especializadas**
 - **Pydantic**: Validação e serialização de dados estruturados
@@ -146,6 +147,61 @@ Act:      "Pergunta: Que tipo de consulta e qual horário?"
 
 **Vantagem**: Processo transparente e debuggável, fácil de otimizar.
 
+### **7. Interface MVP com Transparência do Agente**
+
+**Decisão**: Interface React focada em mostrar o processo interno do agente, não apenas conversar com ele.
+
+**Layout de 3 Colunas**:
+```
+┌─────────────────┬─────────────────┬─────────────────┐
+│                 │                 │                 │
+│   CHAT          │   REASONING     │   DADOS         │
+│   INTERFACE     │   LOOP DEBUG    │   ESTRUTURADOS  │
+│                 │                 │                 │
+│   [Input]       │   Think: ...    │   Nome: João    │
+│   [Histórico]   │   Extract: ...  │   Tel: (11)...  │
+│                 │   Validate: ... │   Data: ...     │
+│                 │   Act: ...      │   Conf: 85%     │
+└─────────────────┴─────────────────┴─────────────────┘
+```
+
+**Transparência Implementada**:
+- **Reasoning Panel**: 4 passos principais com detalhes relevantes e timestamps
+- **Data Panel**: Dados estruturados com confidence scores e status de validação
+- **Polling Inteligente**: 500ms durante processamento, 2s em idle
+- **Sem Persistência**: Apenas último ciclo de reasoning visível
+
+**Vantagem**: Debugging eficiente e demonstração transparente do funcionamento do agente.
+
+### **8. Containerização Padronizada**
+
+**Decisão**: Sistema completo containerizado com Docker Compose para zero-config setup.
+
+**Arquitetura de Containers**:
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   PostgreSQL    │    │   FastAPI       │    │   React         │
+│   (5432)        │◄───┤   (8000)        │◄───┤   (3001)        │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         ▲                       ▲
+         │                       │
+         └───────────────────────┘
+                    │
+         ┌─────────────────┐
+         │   PostgREST     │
+         │   (3000)        │
+         └─────────────────┘
+```
+
+**Padrões Docker**:
+- **Multi-stage builds**: Otimização de imagens para produção
+- **Volume mounting**: Hot reload para desenvolvimento
+- **Network isolation**: Comunicação segura entre serviços
+- **Environment variables**: Configuração centralizada via .env
+- **Health checks**: Monitoramento automático de serviços
+
+**Vantagem**: Setup consistente em qualquer ambiente, desenvolvimento e produção.
+
 ---
 
 ## Estrutura de Arquivos
@@ -192,6 +248,25 @@ src/
 │   ├── validators.py         # Validação de dados brasileiros
 │   └── data_normalizer.py    # Normalização e formatação de dados
 └── main.py                    # Entry point CLI (para testes)
+
+### **Frontend React (Etapa 4)**
+```
+frontend/
+├── src/
+│   ├── components/
+│   │   ├── ChatPanel.tsx          # Interface de chat responsiva
+│   │   ├── ReasoningPanel.tsx     # Debug do reasoning loop
+│   │   ├── DataPanel.tsx          # Dados estruturados em tempo real
+│   │   └── Layout.tsx             # Layout de 3 colunas responsivo
+│   ├── hooks/
+│   │   └── useAgentDebug.ts       # Hook para debug do agente
+│   ├── services/
+│   │   └── api.ts                 # Integração HTTP REST com FastAPI
+│   └── App.tsx                    # Componente principal
+├── package.json
+├── vite.config.ts
+├── tailwind.config.js
+└── index.html
 ```
 
 ---
@@ -264,41 +339,74 @@ services:
   # PostgreSQL para dados estruturados
   postgres:
     image: postgres:15-alpine
-    environment:
-      - POSTGRES_DB=data_agent
-      - POSTGRES_USER=agent_user
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    container_name: postgres
     ports:
       - "5432:5432"
-
-  # PostgREST para API automática
-  postgrest:
-    image: postgrest/postgrest
     environment:
-      - PGRST_DB_URI=postgresql://agent_user:${DB_PASSWORD}@postgres:5432/data_agent
-      - PGRST_DB_SCHEMAS=public
-      - PGRST_DB_ANON_ROLE=agent_user
-    ports:
-      - "3000:3000"
-    depends_on:
-      - postgres
+      POSTGRES_DB: data_agent
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    restart: unless-stopped
 
   # FastAPI backend
   api:
     build: .
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    container_name: api
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://agent_user:${DB_PASSWORD}@postgres:5432/data_agent
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:password@postgres:5432/data_agent}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      OPENAI_MAX_TOKENS: ${OPENAI_MAX_TOKENS:-500}
     volumes:
       - .:/app
     depends_on:
       - postgres
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # PostgREST para API automática
+  postgrest:
+    image: postgrest/postgrest
+    container_name: postgrest
+    ports:
+      - "3000:3000"
+    environment:
+      PGRST_DB_URI: ${PGRST_DB_URI:-postgresql://postgres:password@postgres:5432/data_agent}
+      PGRST_DB_SCHEMA: ${PGRST_DB_SCHEMA:-public}
+      PGRST_DB_ANON_ROLE: ${PGRST_DB_ANON_ROLE:-anon}
+      PGRST_JWT_SECRET: ${PGRST_JWT_SECRET:-your-jwt-secret}
+    depends_on:
+      - postgres
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # React frontend (Etapa 4)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "3001:3001"
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+      NODE_ENV: ${NODE_ENV:-development}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - app-network
+    restart: unless-stopped
 ```
 
 ---
@@ -313,9 +421,7 @@ docker-compose up -d
 # URLs principais:
 # http://localhost:8000    - FastAPI Backend + Docs
 # http://localhost:3000    - PostgREST (dados diretos)
-
-# Interface React (etapa 4):
-# http://localhost:3001    - Interface conversacional
+# http://localhost:3001    - Interface React conversacional (Etapa 4)
 ```
 
 ---
@@ -324,25 +430,23 @@ docker-compose up -d
 
 ### **Variáveis Essenciais**
 ```bash
-# .env
-# OpenAI (obrigatório para chat conversacional)
-OPENAI_API_KEY=sua_chave_aqui
-OPENAI_MODEL=gpt-4o-mini
-OPENAI_MAX_TOKENS=500
+# Copiar template de variáveis
+cp env.example .env
 
-# Database
-DB_PASSWORD=secure_password_here
-DATABASE_URL=postgresql://agent_user:${DB_PASSWORD}@localhost:5432/data_agent
-
-# Chat Configuration
-CHAT_CONTEXT_WINDOW=4000
-CHAT_MAX_MESSAGES=20
-CHAT_ENABLE_FUNCTION_CALLING=true
-
-# Logging
-LOG_LEVEL=INFO
-LOG_FORMAT=json
+# Editar .env com suas configurações:
+# OPENAI_API_KEY=sua_chave_aqui (OBRIGATÓRIO)
+# POSTGRES_PASSWORD=senha_segura (recomendado)
+# VITE_API_URL=http://localhost:8000 (padrão)
 ```
+
+**Variáveis Obrigatórias:**
+- `OPENAI_API_KEY`: Chave da API OpenAI para chat conversacional
+
+**Variáveis com Defaults:**
+- `POSTGRES_USER=postgres`, `POSTGRES_PASSWORD=password`
+- `OPENAI_MODEL=gpt-4o-mini`, `OPENAI_MAX_TOKENS=500`
+- `VITE_API_URL=http://localhost:8000`, `NODE_ENV=development`
+- `LOG_LEVEL=INFO`, `LOG_FORMAT=json`
 
 ---
 
@@ -353,15 +457,16 @@ LOG_FORMAT=json
 # Clone e configure
 git clone <repository>
 cd data-structuring-agent
-cp .env.example .env
+cp env.example .env
 # Editar .env com OPENAI_API_KEY
 
-# Sistema completo
+# Sistema completo (incluindo frontend React)
 docker-compose up -d
 
 # URLs de acesso:
 # http://localhost:8000    - FastAPI (API + docs)
 # http://localhost:3000    - PostgREST (dados diretos)
+# http://localhost:3001    - Interface React conversacional (Etapa 4)
 ```
 
 ### **Teste de Funcionalidade**
@@ -381,6 +486,12 @@ curl -X POST "http://localhost:8000/extract/entities" \
 
 ### **Comandos Principais**
 ```bash
+# Sistema completo via Docker
+docker-compose up -d              # Iniciar todos os serviços
+docker-compose down               # Parar todos os serviços
+docker-compose logs -f api        # Ver logs do backend
+docker-compose logs -f frontend   # Ver logs do frontend
+
 # Setup do banco de dados
 docker exec api python -m src.main setup-db
 
@@ -388,6 +499,12 @@ docker exec api python -m src.main setup-db
 curl -X POST "http://localhost:8000/chat/message" \
   -H "Content-Type: application/json" \
   -d '{"message": "Olá, quero marcar uma consulta"}'
+
+# Frontend React (desenvolvimento local - opcional)
+cd frontend
+npm install
+npm run dev          # Desenvolvimento local na porta 3001
+npm run build        # Build de produção
 ```
 
 ---
@@ -430,9 +547,9 @@ curl -X POST "http://localhost:8000/chat/message" \
 ## Princípios de Design
 
 ### **Interface-First Development**
-- Interface React conversacional como objetivo principal (etapa 4)
-- Visualização de dados estruturados em tempo real
-- Experiência demonstrável e profissional desde o início
+- Interface React conversacional MVP com transparência do agente (etapa 4)
+- Visualização de dados estruturados e reasoning loop em tempo real
+- Experiência demonstrável focada em debugging e validação do sistema
 
 ### **Incremental Value Delivery**
 - Cada etapa entrega funcionalidade testável
@@ -454,3 +571,9 @@ curl -X POST "http://localhost:8000/chat/message" \
 - Logging estruturado para debugging
 - Configuração centralizada via environment variables
 - Health checks e monitoramento integrado
+
+### **Agent Transparency**
+- Interface mostra processo interno do agente (Think → Extract → Validate → Act)
+- Debugging visual em tempo real para validação do sistema
+- Transparência total para demonstração e otimização
+- MVP focado em funcionalidade e visibilidade, não complexidade visual
