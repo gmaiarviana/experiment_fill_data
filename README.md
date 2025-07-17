@@ -147,7 +147,23 @@ Act:      "Pergunta: Que tipo de consulta e qual horário?"
 
 **Vantagem**: Processo transparente e debuggável, fácil de otimizar.
 
-### **7. Interface MVP com Transparência do Agente**
+### **7. Arquitetura Modular para Conversação Inteligente**
+
+**Decisão**: Sistema modular com componentes especializados para evitar loops, repetições e facilitar manutenção.
+
+**Componentes Modulares**:
+- **QuestionGenerator**: Geração de perguntas contextuais e templates de resposta
+- **DataSummarizer**: Sumarização de dados e verificação de completude
+- **ConversationManager**: Gestão de estado da conversa e prevenção de loops
+- **ReasoningEngine**: Motor de raciocínio que orquestra os componentes
+
+**Benefícios**:
+- Evita loops e repetições na conversa
+- Código mais limpo e fácil de manter
+- Componentes isolados para testes e ajustes
+- Melhor experiência do usuário
+
+### **8. Interface MVP com Transparência do Agente**
 
 **Decisão**: Interface React focada em mostrar o processo interno do agente, não apenas conversar com ele.
 
@@ -246,7 +262,10 @@ src/
 │   ├── database.py           # Conexão PostgreSQL
 │   ├── logging.py            # Setup do Loguru
 │   ├── validators.py         # Validação de dados brasileiros
-│   └── data_normalizer.py    # Normalização e formatação de dados
+│   ├── data_normalizer.py    # Normalização e formatação de dados
+│   ├── question_generator.py # Geração de perguntas contextuais
+│   ├── data_summarizer.py    # Sumarização e análise de dados
+│   └── conversation_manager.py # Gestão de estado da conversa
 └── main.py                    # Entry point CLI (para testes)
 
 ### **Frontend React (Etapa 4)**

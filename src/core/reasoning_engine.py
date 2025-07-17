@@ -3,6 +3,9 @@ from datetime import datetime
 from loguru import logger
 from src.core.entity_extraction import EntityExtractor
 from src.core.data_normalizer import normalize_consulta_data
+from src.core.question_generator import QuestionGenerator
+from src.core.data_summarizer import DataSummarizer
+from src.core.conversation_manager import ConversationManager
 import random
 
 
@@ -14,50 +17,14 @@ class ReasoningEngine:
     
     def __init__(self):
         """
-        Inicializa o motor de raciocínio com o extrator de entidades.
+        Inicializa o motor de raciocínio com os componentes modulares.
         """
         self.entity_extractor = EntityExtractor()
+        self.question_generator = QuestionGenerator()
+        self.data_summarizer = DataSummarizer()
+        self.conversation_manager = ConversationManager()
         
-        # Templates de resposta para tornar o diálogo mais natural
-        self.response_templates = {
-            "welcome": [
-                "Olá! Vou te ajudar a agendar sua consulta. Para começar, qual é o nome do paciente?",
-                "Oi! Vou te auxiliar no agendamento. Primeiro, preciso saber o nome do paciente.",
-                "Perfeito! Vamos agendar sua consulta. Qual é o nome completo do paciente?"
-            ],
-            "progress_single": [
-                "Ótimo! Agora preciso do {field}.",
-                "Perfeito! Agora me informe o {field}.",
-                "Excelente! Agora preciso saber o {field}."
-            ],
-            "progress_multiple": [
-                "Já tenho {count} informações. Ainda preciso de: {fields}.",
-                "Ótimo progresso! Com {count} dados coletados, agora preciso de: {fields}.",
-                "Perfeito! Já tenho {count} informações. Falta apenas: {fields}."
-            ],
-            "data_summary": [
-                "Perfeito! {summary}. Agora preciso de: {missing}.",
-                "Excelente! {summary}. Para completar, preciso de: {missing}.",
-                "Ótimo! {summary}. Ainda preciso de: {missing}."
-            ],
-            "confirmation": [
-                "Perfeito! Tenho todas as informações. Posso confirmar o agendamento?",
-                "Excelente! Agendamento completo. Posso prosseguir com a confirmação?",
-                "Ótimo! Tenho todos os dados necessários. Posso confirmar?"
-            ],
-            "complete": [
-                "Perfeito! Agendamento confirmado com sucesso! ✅",
-                "Excelente! Consulta agendada com sucesso! ✅",
-                "Ótimo! Agendamento realizado com sucesso! ✅"
-            ],
-            "correction": [
-                "Entendi, vou corrigir. Pode me informar novamente os dados corretos?",
-                "Claro! Vou ajustar. Pode me passar as informações corretas?",
-                "Perfeito! Vou corrigir. Pode me informar os dados certos?"
-            ]
-        }
-        
-        logger.info("ReasoningEngine inicializado com EntityExtractor e templates de resposta")
+        logger.info("ReasoningEngine inicializado com componentes modulares")
     
     def _get_response_template(self, template_type: str, **kwargs) -> str:
         """
@@ -70,17 +37,7 @@ class ReasoningEngine:
         Returns:
             str: Resposta formatada
         """
-        if template_type not in self.response_templates:
-            return "Desculpe, não consegui processar sua mensagem."
-        
-        templates = self.response_templates[template_type]
-        template = random.choice(templates)
-        
-        try:
-            return template.format(**kwargs)
-        except KeyError as e:
-            logger.warning(f"Erro ao formatar template {template_type}: {e}")
-            return templates[0] if templates else "Desculpe, não consegui processar sua mensagem."
+        return self.question_generator.generate_contextual_question(template_type, **kwargs)
     
     async def process_message(self, message: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -98,7 +55,7 @@ class ReasoningEngine:
             
             # Inicializa contexto se não fornecido
             if context is None:
-                context = self._initialize_context()
+                context = self.conversation_manager.initialize_context()
             
             # THINK: Analisa mensagem e decide próximo passo
             think_result = await self._think(message, context)
@@ -130,26 +87,32 @@ class ReasoningEngine:
             logger.debug(f"ACT: {act_result}")
             
             # Atualiza contexto com dados extraídos e nova ação
-            if extract_result and extract_result.get("extracted_data"):
-                context = self.update_context(
-                    context, 
-                    extract_result["extracted_data"], 
-                    act_result["action"]
-                )
+            extracted_data = extract_result.get("extracted_data", {}) if extract_result else {}
+            action = act_result["action"]
+            response = act_result.get("response", "")
+            confidence = act_result.get("confidence", 0.0)
+            
+            # Atualiza contexto usando ConversationManager
+            context = self.conversation_manager.update_context(
+                context, 
+                extracted_data, 
+                action, 
+                response
+            )
             
             # Atualiza confidence tracking
-            confidence = act_result.get("confidence", 0.0)
             context["total_confidence"] += confidence
             context["confidence_count"] += 1
             context["average_confidence"] = context["total_confidence"] / context["confidence_count"]
             
-            # Adiciona mensagem ao histórico com timestamp real
-            context["conversation_history"].append({
-                "message": message,
-                "timestamp": datetime.now().isoformat(),
-                "action": act_result["action"],
-                "confidence": confidence
-            })
+            # Adiciona mensagem ao histórico usando ConversationManager
+            self.conversation_manager.add_to_history(
+                context, 
+                message, 
+                action, 
+                response, 
+                confidence
+            )
             
             logger.info(f"Processamento concluído. Ação: {act_result['action']}, Confidence: {confidence:.2f}")
             return act_result
@@ -161,7 +124,7 @@ class ReasoningEngine:
     async def _think(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         THINK: Analisa a mensagem e decide o próximo passo baseado no contexto e histórico.
-        Prioriza EXTRACT quando há potencial de dados na mensagem.
+        Usa ConversationManager para evitar loops e repetições.
         
         Args:
             message (str): Mensagem para analisar
@@ -175,33 +138,17 @@ class ReasoningEngine:
             
             # Análise baseada em palavras-chave, contexto e histórico
             message_lower = message.lower()
-            conversation_history = context.get("conversation_history", [])
             existing_data = context.get("extracted_data", {})
-            
-            # Evita respostas repetitivas - verifica se a última resposta foi similar
-            if conversation_history:
-                last_response = conversation_history[-1].get("response", "").lower()
-                if "fornecer mais detalhes" in last_response and "fornecer mais detalhes" in message_lower:
-                    # Se o usuário está repetindo a pergunta, dar resposta mais específica
-                    missing_fields = self._get_missing_fields(existing_data)
-                    if missing_fields:
-                        return {
-                            "action": "ask",
-                            "reason": "Usuário pedindo detalhes específicos",
-                            "response": f"Claro! Preciso saber: {', '.join(missing_fields[:2])}. Pode me informar?",
-                            "next_questions": self.get_missing_fields_questions(missing_fields[:2]),
-                            "confidence": 0.9
-                        }
             
             # Verifica se é uma confirmação (considera contexto)
             confirmation_words = ["sim", "confirmo", "correto", "certo", "ok", "perfeito", "confirma"]
             if any(word in message_lower for word in confirmation_words):
                 # Se tem dados suficientes, confirma
-                if self.is_data_complete(existing_data):
+                if self.data_summarizer.is_data_complete(existing_data):
                     return {
                         "action": "complete",
                         "reason": "Confirmação com dados completos",
-                        "response": "Perfeito! Agendamento confirmado com sucesso.",
+                        "response": self.question_generator.generate_contextual_question("complete"),
                         "confidence": 0.95
                     }
                 else:
@@ -215,25 +162,15 @@ class ReasoningEngine:
             # Verifica se é uma negação/correção (considera histórico)
             negation_words = ["não", "não é", "errado", "incorreto", "mudar", "corrigir", "não é isso"]
             if any(word in message_lower for word in negation_words):
-                # Analisa qual campo precisa ser corrigido baseado no histórico
-                last_action = conversation_history[-1]["action"] if conversation_history else None
-                if last_action == "ask":
-                    return {
-                        "action": "ask",
-                        "reason": "Correção após pergunta específica",
-                        "response": "Entendi, vou corrigir. Pode me informar novamente os dados corretos?",
-                        "next_questions": self.get_missing_fields_questions(list(existing_data.keys())),
-                        "confidence": 0.8
-                    }
-                else:
-                    return {
-                        "action": "extract",
-                        "reason": "Correção geral - nova extração",
-                        "confidence": 0.7
-                    }
+                return {
+                    "action": "extract",
+                    "reason": "Correção - nova extração",
+                    "confidence": 0.7
+                }
             
             # Verifica se é uma resposta específica a uma pergunta anterior
-            if conversation_history and conversation_history[-1]["action"] == "ask":
+            conversation_history = context.get("conversation_history", [])
+            if conversation_history and conversation_history[-1].get("action") == "ask":
                 # Se a última ação foi perguntar, provavelmente é uma resposta
                 return {
                     "action": "extract",
@@ -532,8 +469,8 @@ class ReasoningEngine:
                         # Se tem erros de validação, pergunta para corrigir de forma mais amigável
                         if validation_errors:
                             # Cria resposta mais amigável sobre os problemas
-                            extracted_summary = self._summarize_extracted_data(final_data)
-                            validation_issues = self._format_validation_errors(validation_errors)
+                            extracted_summary = self.data_summarizer.summarize_extracted_data(final_data)
+                            validation_issues = self.data_summarizer.format_validation_errors(validation_errors)
                             
                             response = f"Ótimo! {extracted_summary}. Mas encontrei alguns problemas: {validation_issues}. Pode corrigir?"
                             
@@ -547,27 +484,24 @@ class ReasoningEngine:
                             }
                         
                         # Verifica se dados estão completos após validação
-                        if self.is_data_complete(final_data):
+                        if self.data_summarizer.is_data_complete(final_data):
                             return {
                                 "action": "complete",
-                                "response": self._get_response_template("complete"),
+                                "response": self.question_generator.generate_contextual_question("complete"),
                                 "data": final_data,
                                 "confidence": combined_confidence
                             }
                         
-                        # Se não está completo, pergunta pelos campos faltantes
-                        missing_fields = self._get_missing_fields(final_data)
+                        # Se não está completo, usa ConversationManager para gerar resposta
+                        missing_fields = self.data_summarizer.get_missing_fields(final_data)
                         if missing_fields:
-                            # Cria resposta mais específica sobre o que já tem e o que falta
-                            extracted_summary = self._summarize_extracted_data(final_data)
-                            missing_summary = ", ".join([self._get_field_display_name(field) for field in missing_fields])
-                            
-                            response = f"Ótimo! {extracted_summary}. Agora preciso de: {missing_summary}."
+                            # Usa ConversationManager para evitar repetições
+                            flow_suggestion = self.conversation_manager.get_conversation_flow_suggestion(context, "")
                             
                             return {
-                                "action": "ask",
-                                "response": response,
-                                "next_questions": self.get_missing_fields_questions(missing_fields),
+                                "action": flow_suggestion["action"],
+                                "response": flow_suggestion["response"],
+                                "next_questions": self.question_generator.get_missing_fields_questions(missing_fields),
                                 "data": final_data,
                                 "confidence": combined_confidence
                             }
@@ -592,7 +526,7 @@ class ReasoningEngine:
                         missing_fields = extract_result.get("missing_fields", [])
                         
                         # Verifica se dados estão completos
-                        if self.is_data_complete(extracted_data):
+                        if self.data_summarizer.is_data_complete(extracted_data):
                             return {
                                 "action": "confirm",
                                 "response": "Tenho as informações! Posso confirmar o agendamento?",
@@ -600,17 +534,13 @@ class ReasoningEngine:
                                 "confidence": confidence_score
                             }
                         
-                        # Se tem dados mas faltam campos
+                        # Se tem dados mas faltam campos, usa ConversationManager
                         if extracted_data and missing_fields:
-                            # Cria resposta mais específica baseada no que já tem
-                            extracted_summary = self._summarize_extracted_data(extracted_data)
-                            missing_fields_display = [self._get_field_display_name(field) for field in missing_fields[:2]]
-                            
-                            response = f"Perfeito! {extracted_summary}. Agora preciso de: {', '.join(missing_fields_display)}."
+                            flow_suggestion = self.conversation_manager.get_conversation_flow_suggestion(context, "")
                             
                             return {
-                                "action": "ask",
-                                "response": response,
+                                "action": flow_suggestion["action"],
+                                "response": flow_suggestion["response"],
                                 "next_questions": extract_result.get("suggested_questions", [])[:2],
                                 "data": extracted_data,
                                 "confidence": confidence_score
@@ -619,11 +549,11 @@ class ReasoningEngine:
                         # Se extração foi bem-sucedida mas dados insuficientes
                         if extracted_data:
                             # Temos alguns dados, vamos ser mais específicos
-                            extracted_summary = self._summarize_extracted_data(extracted_data)
+                            extracted_summary = self.data_summarizer.summarize_extracted_data(extracted_data)
                             response = f"Ótimo! {extracted_summary}. Para completar o agendamento, preciso de mais algumas informações."
                         else:
                             # Não extraímos nada, vamos começar do básico
-                            response = "Vou te ajudar a agendar a consulta! Para começar, qual é o nome do paciente?"
+                            response = self.question_generator.generate_contextual_question("welcome")
                         
                         return {
                             "action": "ask",
@@ -749,83 +679,7 @@ class ReasoningEngine:
             logger.error(f"Erro ao atualizar contexto: {str(e)}")
             return context
     
-    def is_data_complete(self, data: Dict[str, Any]) -> bool:
-        """
-        Verifica se os dados estão completos para um agendamento.
-        Exige todos os campos obrigatórios: nome, telefone, data, horário.
-        Tipo de consulta é opcional.
-        
-        Args:
-            data (Dict[str, Any]): Dados para verificar
-            
-        Returns:
-            bool: True se todos os campos obrigatórios estão preenchidos
-        """
-        # Campos obrigatórios para agendamento
-        required_fields = ["name", "phone", "consulta_date", "horario"]
-        
-        # Verifica se todos os campos obrigatórios estão preenchidos
-        for field in required_fields:
-            value = data.get(field, "")
-            if not value or str(value).strip() == "":
-                return False
-        
-        # Se chegou até aqui, todos os campos obrigatórios estão preenchidos
-        return True
-    
-    def get_missing_fields_questions(self, missing_fields: List[str]) -> List[str]:
-        """
-        Gera perguntas específicas para campos faltantes.
-        
-        Args:
-            missing_fields (List[str]): Lista de campos faltantes
-            
-        Returns:
-            List[str]: Lista de perguntas para os campos faltantes
-        """
-        field_questions = {
-            "name": "Qual é o nome completo do paciente?",
-            "phone": "Qual é o telefone para contato?",
-            "telefone": "Qual é o telefone para contato?",
-            "consulta_date": "Para qual data você gostaria de agendar?",
-            "data": "Para qual data você gostaria de agendar?",
-            "horario": "Qual horário prefere?",
-            "tipo_consulta": "Que tipo de consulta é esta?",
-            "email": "Qual é o email para contato?",
-            "cpf": "Qual é o CPF do paciente?",
-            "cep": "Qual é o CEP do endereço?",
-            "endereco": "Qual é o endereço completo?"
-        }
-        
-        questions = []
-        for field in missing_fields[:3]:  # Limita a 3 perguntas por vez
-            if field in field_questions:
-                questions.append(field_questions[field])
-            else:
-                questions.append(f"Qual é o {field}?")
-        
-        return questions
-    
-    def _get_missing_fields(self, data: Dict[str, Any]) -> List[str]:
-        """
-        Identifica campos obrigatórios faltantes nos dados.
-        Considera apenas campos obrigatórios: nome, telefone, data, horário.
-        
-        Args:
-            data (Dict[str, Any]): Dados para verificar
-            
-        Returns:
-            List[str]: Lista de campos obrigatórios faltantes
-        """
-        required_fields = ["name", "phone", "consulta_date", "horario"]
-        missing = []
-        
-        for field in required_fields:
-            value = data.get(field, "")
-            if not value or str(value).strip() == "":
-                missing.append(field)
-        
-        return missing
+
     
     def get_context_summary(self, context: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -841,7 +695,7 @@ class ReasoningEngine:
         history = context.get("conversation_history", [])
         
         # Calcula completude dos dados
-        missing_fields = self._get_missing_fields(extracted_data)
+        missing_fields = self.data_summarizer.get_missing_fields(extracted_data)
         total_possible = 5  # name, phone, consulta_date, horario, tipo_consulta
         completeness = (total_possible - len(missing_fields)) / total_possible
         
@@ -862,7 +716,7 @@ class ReasoningEngine:
             "last_timestamp": last_timestamp,
             "average_confidence": avg_confidence,
             "session_duration": self._calculate_session_duration(context),
-            "extracted_data_summary": self._summarize_extracted_data(extracted_data)
+            "extracted_data_summary": self.data_summarizer.summarize_extracted_data(extracted_data)
         }
     
     def _calculate_session_duration(self, context: Dict[str, Any]) -> str:
