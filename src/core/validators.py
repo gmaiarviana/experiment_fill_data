@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import re
 from typing import Dict, Any, Optional
 
@@ -56,6 +56,150 @@ def validate_brazilian_phone(phone: str) -> Dict[str, Any]:
         }
 
 
+def parse_weekday_expressions(date_str: str) -> Dict[str, Any]:
+    """
+    Processa expressões de dias da semana em português.
+    
+    Args:
+        date_str: String com expressão de dia da semana
+        
+    Returns:
+        Dict com formato {"valid": bool, "iso_date": str, "suggestions": List[str], "error": str}
+    """
+    try:
+        date_str = date_str.lower().strip()
+        today = datetime.now()
+        
+        # Mapeamento de dias da semana
+        weekdays = {
+            "segunda": 0, "segunda-feira": 0, "segunda feira": 0,
+            "terça": 1, "terça-feira": 1, "terca": 1, "terca-feira": 1, "terça feira": 1, "terca feira": 1,
+            "quarta": 2, "quarta-feira": 2, "quarta feira": 2,
+            "quinta": 3, "quinta-feira": 3, "quinta feira": 3,
+            "sexta": 4, "sexta-feira": 4, "sexta feira": 4,
+            "sábado": 5, "sabado": 5,
+            "domingo": 6
+        }
+        
+        # Padrões para expressões de dias da semana
+        patterns = [
+            (r"próxima (\w+)", "next"),
+            (r"proxima (\w+)", "next"),
+            (r"(\w+) que vem", "next"),
+            (r"(\w+) próxima", "next"),
+            (r"(\w+) proxima", "next"),
+            (r"(\w+)", "current")  # Dia da semana simples
+        ]
+        
+        for pattern, modifier in patterns:
+            match = re.match(pattern, date_str)
+            if match:
+                weekday_name = match.group(1)
+                
+                if weekday_name in weekdays:
+                    target_weekday = weekdays[weekday_name]
+                    current_weekday = today.weekday()
+                    
+                    if modifier == "next":
+                        # Próxima ocorrência do dia da semana
+                        days_ahead = (target_weekday - current_weekday) % 7
+                        if days_ahead == 0:  # Se for hoje, vai para próxima semana
+                            days_ahead = 7
+                        target_date = today + timedelta(days=days_ahead)
+                    else:
+                        # Próxima ocorrência (se for hoje, mantém hoje)
+                        days_ahead = (target_weekday - current_weekday) % 7
+                        target_date = today + timedelta(days=days_ahead)
+                    
+                    iso_date = target_date.strftime("%Y-%m-%d")
+                    
+                    # Verifica se é uma data futura válida
+                    future_validation = validate_future_date(target_date)
+                    if not future_validation["valid"]:
+                        return {
+                            "valid": False,
+                            "iso_date": "",
+                            "suggestions": future_validation.get("suggestions", []),
+                            "error": future_validation["error"]
+                        }
+                    
+                    return {
+                        "valid": True,
+                        "iso_date": iso_date,
+                        "original": date_str,
+                        "suggestions": [],
+                        "error": ""
+                    }
+        
+        return {
+            "valid": False,
+            "iso_date": "",
+            "original": date_str,
+            "suggestions": [],
+            "error": "Expressão de dia da semana não reconhecida"
+        }
+        
+    except Exception as e:
+        return {
+            "valid": False,
+            "iso_date": "",
+            "original": date_str,
+            "suggestions": [],
+            "error": f"Erro no parsing: {str(e)}"
+        }
+
+
+def validate_future_date(target_date: datetime) -> Dict[str, Any]:
+    """
+    Valida se uma data é futura e contextualmente apropriada.
+    
+    Args:
+        target_date: Data a ser validada
+        
+    Returns:
+        Dict com formato {"valid": bool, "error": str, "suggestions": List[str]}
+    """
+    try:
+        today = datetime.now().date()
+        target_date_only = target_date.date()
+        
+        # Se a data é passada
+        if target_date_only < today:
+            # Calcula próximas sugestões
+            suggestions = []
+            for i in range(1, 4):  # Próximos 3 dias
+                suggestion_date = today + timedelta(days=i)
+                suggestions.append(suggestion_date.strftime("%Y-%m-%d"))
+            
+            return {
+                "valid": False,
+                "error": "Não é possível agendar para datas passadas",
+                "suggestions": suggestions
+            }
+        
+        # Se a data é muito distante (mais de 6 meses)
+        six_months_later = today + timedelta(days=180)
+        if target_date_only > six_months_later:
+            return {
+                "valid": False,
+                "error": "Data muito distante. Considere uma data mais próxima",
+                "suggestions": []
+            }
+        
+        return {
+            "valid": True,
+            "error": "",
+            "suggestions": []
+        }
+        
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": f"Erro na validação: {str(e)}",
+            "suggestions": []
+        }
+
+
 def parse_relative_date(date_str: str) -> Dict[str, Any]:
     """
     Converte expressões de data relativa para formato ISO.
@@ -64,13 +208,18 @@ def parse_relative_date(date_str: str) -> Dict[str, Any]:
         date_str: String com expressão de data relativa
         
     Returns:
-        Dict com formato {"valid": bool, "iso_date": str, "error": str}
+        Dict com formato {"valid": bool, "iso_date": str, "suggestions": List[str], "error": str}
     """
     try:
         date_str = date_str.lower().strip()
         today = datetime.now()
         
-        # Mapeamento de expressões relativas
+        # Primeiro, tenta processar expressões de dias da semana
+        weekday_result = parse_weekday_expressions(date_str)
+        if weekday_result["valid"]:
+            return weekday_result
+        
+        # Mapeamento de expressões relativas expandido
         relative_dates = {
             "hoje": 0,
             "amanhã": 1,
@@ -91,28 +240,56 @@ def parse_relative_date(date_str: str) -> Dict[str, Any]:
             "próximo mês": 30,
             "proximo mes": 30,
             "mês passado": -30,
-            "mes passado": -30
+            "mes passado": -30,
+            # Novas expressões de período
+            "próximo ano": 365,
+            "proximo ano": 365,
+            "ano que vem": 365,
+            "ano passado": -365,
+            "próximos dias": 3,
+            "proximos dias": 3,
+            "próximas semanas": 14,
+            "proximas semanas": 14
         }
         
         # Verifica se é uma expressão conhecida
         if date_str in relative_dates:
             days_offset = relative_dates[date_str]
             target_date = today + timedelta(days=days_offset)
+            
+            # Valida se é uma data futura apropriada
+            future_validation = validate_future_date(target_date)
+            if not future_validation["valid"]:
+                return {
+                    "valid": False,
+                    "iso_date": "",
+                    "original": date_str,
+                    "suggestions": future_validation.get("suggestions", []),
+                    "error": future_validation["error"]
+                }
+            
             iso_date = target_date.strftime("%Y-%m-%d")
             
             return {
                 "valid": True,
                 "iso_date": iso_date,
                 "original": date_str,
+                "suggestions": [],
                 "error": ""
             }
         
-        # Tenta padrões específicos
+        # Tenta padrões específicos expandidos
         patterns = {
             r"em (\d+) dias?": lambda m: int(m.group(1)),
             r"(\d+) dias? atrás": lambda m: -int(m.group(1)),
             r"(\d+) dias? depois": lambda m: int(m.group(1)),
-            r"daqui a (\d+) dias?": lambda m: int(m.group(1))
+            r"daqui a (\d+) dias?": lambda m: int(m.group(1)),
+            r"em (\d+) semanas?": lambda m: int(m.group(1)) * 7,
+            r"(\d+) semanas? atrás": lambda m: -int(m.group(1)) * 7,
+            r"daqui a (\d+) semanas?": lambda m: int(m.group(1)) * 7,
+            r"em (\d+) meses?": lambda m: int(m.group(1)) * 30,
+            r"(\d+) meses? atrás": lambda m: -int(m.group(1)) * 30,
+            r"daqui a (\d+) meses?": lambda m: int(m.group(1)) * 30
         }
         
         for pattern, func in patterns.items():
@@ -120,20 +297,41 @@ def parse_relative_date(date_str: str) -> Dict[str, Any]:
             if match:
                 days_offset = func(match)
                 target_date = today + timedelta(days=days_offset)
+                
+                # Valida se é uma data futura apropriada
+                future_validation = validate_future_date(target_date)
+                if not future_validation["valid"]:
+                    return {
+                        "valid": False,
+                        "iso_date": "",
+                        "original": date_str,
+                        "suggestions": future_validation.get("suggestions", []),
+                        "error": future_validation["error"]
+                    }
+                
                 iso_date = target_date.strftime("%Y-%m-%d")
                 
                 return {
                     "valid": True,
                     "iso_date": iso_date,
                     "original": date_str,
+                    "suggestions": [],
                     "error": ""
                 }
+        
+        # Se não encontrou padrão, retorna erro com sugestões
+        suggestions = [
+            (today + timedelta(days=1)).strftime("%Y-%m-%d"),  # amanhã
+            (today + timedelta(days=7)).strftime("%Y-%m-%d"),  # semana que vem
+            (today + timedelta(days=30)).strftime("%Y-%m-%d")  # mês que vem
+        ]
         
         return {
             "valid": False,
             "iso_date": "",
             "original": date_str,
-            "error": "Expressão de data não reconhecida"
+            "suggestions": suggestions,
+            "error": "Expressão de data não reconhecida. Tente: 'amanhã', 'próxima segunda', 'semana que vem'"
         }
         
     except Exception as e:
@@ -141,6 +339,7 @@ def parse_relative_date(date_str: str) -> Dict[str, Any]:
             "valid": False,
             "iso_date": "",
             "original": date_str,
+            "suggestions": [],
             "error": f"Erro no parsing: {str(e)}"
         }
 
