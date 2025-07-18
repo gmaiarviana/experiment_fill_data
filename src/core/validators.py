@@ -357,4 +357,82 @@ def validate_brazilian_cep(cep: str) -> Dict[str, Any]:
             "valid": False,
             "formatted": "",
             "error": f"Erro na validação: {str(e)}"
+        }
+
+
+def validate_consulta_data(data: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Valida dados de consulta médica.
+    
+    Args:
+        data: Dicionário com dados da consulta
+        
+    Returns:
+        Dict com formato {"is_valid": bool, "errors": List[str], "confidence": float}
+    """
+    try:
+        errors = []
+        confidence = 0.8
+        
+        # Valida nome
+        if "nome" in data and data["nome"]:
+            nome = str(data["nome"]).strip()
+            if len(nome.split()) < 2:
+                errors.append("Nome deve ter pelo menos nome e sobrenome")
+                confidence -= 0.2
+        
+        # Valida telefone
+        if "telefone" in data and data["telefone"]:
+            telefone = str(data["telefone"])
+            phone_result = validate_brazilian_phone(telefone)
+            if not phone_result["valid"]:
+                errors.append(f"Telefone inválido: {phone_result['error']}")
+                confidence -= 0.2
+        
+        # Valida data
+        if "data" in data and data["data"]:
+            data_str = str(data["data"])
+            # Tenta parsear data em diferentes formatos
+            try:
+                # Formato DD/MM/YYYY
+                if '/' in data_str:
+                    datetime.strptime(data_str, "%d/%m/%Y")
+                # Formato YYYY-MM-DD
+                elif '-' in data_str:
+                    datetime.strptime(data_str, "%Y-%m-%d")
+                else:
+                    # Tenta expressões relativas
+                    date_result = parse_relative_date(data_str)
+                    if not date_result["valid"]:
+                        errors.append("Data deve estar no formato DD/MM/AAAA ou ser uma expressão válida")
+                        confidence -= 0.2
+            except ValueError:
+                errors.append("Data deve estar no formato DD/MM/AAAA")
+                confidence -= 0.2
+        
+        # Valida horário
+        if "horario" in data and data["horario"]:
+            horario = str(data["horario"])
+            if not re.match(r'\d{1,2}:\d{2}', horario):
+                errors.append("Horário deve estar no formato HH:MM")
+                confidence -= 0.2
+        
+        # Valida tipo de consulta
+        if "tipo_consulta" in data and data["tipo_consulta"]:
+            tipo = str(data["tipo_consulta"]).strip()
+            if len(tipo) < 3:
+                errors.append("Tipo de consulta deve ter pelo menos 3 caracteres")
+                confidence -= 0.1
+        
+        return {
+            "is_valid": len(errors) == 0,
+            "errors": errors,
+            "confidence": max(confidence, 0.1)
+        }
+        
+    except Exception as e:
+        return {
+            "is_valid": False,
+            "errors": [f"Erro na validação: {str(e)}"],
+            "confidence": 0.0
         } 
