@@ -4,6 +4,7 @@ Gera respostas conversacionais baseadas no contexto e resultados do reasoning.
 """
 
 from typing import Dict, Any, Optional, List
+import random
 from loguru import logger
 from src.core.question_generator import QuestionGenerator
 
@@ -19,7 +20,59 @@ class ResponseComposer:
         """
         self.question_generator = QuestionGenerator()
         
-        logger.info("ResponseComposer inicializado com QuestionGenerator")
+        # Templates para variação de respostas
+        self.confirmation_templates = [
+            "Perfeito!",
+            "Ótimo!",
+            "Excelente!",
+            "Muito bem!",
+            "Anotado!",
+            "Entendi!",
+            "Certo!",
+            "Beleza!"
+        ]
+        
+        self.next_question_templates = [
+            "Para qual data você gostaria de agendar?",
+            "Que dia seria melhor para você?",
+            "Qual data funciona melhor?",
+            "Quando você gostaria de vir?",
+            "Para quando você quer marcar?"
+        ]
+        
+        self.name_question_templates = [
+            "Qual é o seu nome?",
+            "Como você se chama?",
+            "Pode me dizer seu nome?",
+            "Qual é o seu nome completo?",
+            "Como posso te chamar?"
+        ]
+        
+        self.phone_question_templates = [
+            "Qual é o seu telefone?",
+            "Pode me passar seu número?",
+            "Qual é o seu celular?",
+            "Me informe seu telefone para contato",
+            "Qual número posso usar para te contatar?"
+        ]
+        
+        self.time_question_templates = [
+            "Que horário seria melhor?",
+            "Qual horário funciona para você?",
+            "Que horas você prefere?",
+            "Qual horário seria ideal?",
+            "Que tal às 14h ou 15h?"
+        ]
+        
+        self.consultation_question_templates = [
+            "Que tipo de consulta você precisa?",
+            "Qual é o motivo da consulta?",
+            "Que tipo de atendimento você busca?",
+            "Qual especialidade você precisa?",
+            "Que tipo de avaliação você quer?"
+        ]
+        
+        logger.info("ResponseComposer inicializado com QuestionGenerator e templates de variação")
     
     async def compose_response(self, think_result: Dict[str, Any], extract_result: Optional[Dict[str, Any]], 
                              validate_result: Optional[Dict[str, Any]], context: Dict[str, Any]) -> Dict[str, Any]:
@@ -91,7 +144,7 @@ class ResponseComposer:
         
         # Se extraiu dados válidos, confirma e pergunta próximo campo
         if extracted_data:
-            confirmation = self._create_extraction_confirmation(extracted_data)
+            confirmation = self._create_extraction_confirmation(extracted_data, context)
             next_question = self._get_next_question(context, extracted_data)
             
             response = f"{confirmation} {next_question}"
@@ -136,7 +189,7 @@ class ResponseComposer:
             # Fallback se não há campos específicos
             return {
                 "action": "ask",
-                "response": "Preciso de mais informações para agendar sua consulta. Pode me dizer seu nome?",
+                "response": random.choice(self.name_question_templates),
                 "missing_fields": ["nome"],
                 "confidence": think_result.get("confidence", 0.5)
             }
@@ -227,56 +280,77 @@ class ResponseComposer:
             "confidence": 0.3
         }
     
-    def _create_extraction_confirmation(self, extracted_data: Dict[str, Any]) -> str:
+    def _create_extraction_confirmation(self, extracted_data: Dict[str, Any], context: Dict[str, Any]) -> str:
         """
-        Cria confirmação dos dados extraídos.
+        Cria confirmação natural dos dados extraídos sem expor dados técnicos.
         
         Args:
             extracted_data (Dict[str, Any]): Dados extraídos
+            context (Dict[str, Any]): Contexto da conversa
             
         Returns:
-            str: Confirmação formatada
+            str: Confirmação natural
         """
-        confirmations = []
-        field_names = {
-            "nome": "Nome",
-            "telefone": "Telefone",
-            "data": "Data",
-            "horario": "Horário", 
-            "tipo_consulta": "Tipo de consulta"
-        }
+        # Identifica o tipo de dado extraído para confirmação contextual
+        if "nome" in extracted_data:
+            nome = extracted_data["nome"]
+            # Extrai primeiro nome para uso mais pessoal
+            primeiro_nome = nome.split()[0] if nome else "você"
+            return f"{random.choice(self.confirmation_templates)} {primeiro_nome}!"
         
-        for field, value in extracted_data.items():
-            if value:
-                display_name = field_names.get(field, field.title())
-                confirmations.append(f"{display_name}: {value}")
+        elif "telefone" in extracted_data:
+            return f"{random.choice(self.confirmation_templates)} Anotei seu telefone!"
         
-        if len(confirmations) == 1:
-            return f"Anotado! {confirmations[0]}."
+        elif "data" in extracted_data:
+            return f"{random.choice(self.confirmation_templates)} Data anotada!"
+        
+        elif "horario" in extracted_data:
+            return f"{random.choice(self.confirmation_templates)} Horário perfeito!"
+        
+        elif "tipo_consulta" in extracted_data:
+            return f"{random.choice(self.confirmation_templates)} Entendi o tipo de consulta!"
+        
+        # Confirmação genérica para múltiplos campos
         else:
-            return f"Anotado! {', '.join(confirmations[:-1])} e {confirmations[-1]}."
+            return f"{random.choice(self.confirmation_templates)} Anotei as informações!"
     
     def _get_next_question(self, context: Dict[str, Any], extracted_data: Dict[str, Any]) -> str:
         """
-        Gera próxima pergunta baseada no contexto.
+        Gera próxima pergunta com progressão contextual fluida.
         
         Args:
             context (Dict[str, Any]): Contexto da sessão
             extracted_data (Dict[str, Any]): Dados extraídos
             
         Returns:
-            str: Próxima pergunta
+            str: Próxima pergunta contextual
         """
         all_data = context.get("extracted_data", {}).copy()
         all_data.update(extracted_data)
         
         missing_fields = self._get_missing_fields(all_data)
         
-        if missing_fields:
-            next_field = missing_fields[0]
-            return self._generate_field_question(next_field, all_data)
-        else:
+        if not missing_fields:
             return "Agora posso confirmar os dados da sua consulta?"
+        
+        next_field = missing_fields[0]
+        
+        # Progressão contextual baseada no que já foi coletado
+        if next_field == "data" and "nome" in all_data:
+            nome = all_data["nome"]
+            primeiro_nome = nome.split()[0] if nome else "você"
+            return f"{primeiro_nome}, para qual data você gostaria de agendar?"
+        
+        elif next_field == "horario" and "data" in all_data:
+            return f"Que horário seria melhor para o dia {all_data['data']}?"
+        
+        elif next_field == "tipo_consulta" and "nome" in all_data:
+            nome = all_data["nome"]
+            primeiro_nome = nome.split()[0] if nome else "você"
+            return f"{primeiro_nome}, que tipo de consulta você precisa?"
+        
+        else:
+            return self._generate_field_question(next_field, all_data)
     
     def _get_missing_fields(self, data: Dict[str, Any]) -> List[str]:
         """
@@ -293,48 +367,54 @@ class ResponseComposer:
     
     def _generate_field_question(self, field: str, existing_data: Dict[str, Any]) -> str:
         """
-        Gera pergunta específica para um campo.
+        Gera pergunta específica para um campo com variação.
         
         Args:
             field (str): Campo para perguntar
             existing_data (Dict[str, Any]): Dados já coletados
             
         Returns:
-            str: Pergunta formatada
+            str: Pergunta formatada com variação
         """
-        field_questions = {
-            "nome": "Qual é o seu nome completo?",
-            "telefone": "Qual é o seu telefone para contato?",
-            "data": "Para qual data você gostaria de agendar?",
-            "horario": "Qual horário seria melhor para você?",
-            "tipo_consulta": "Que tipo de consulta você precisa?"
-        }
-        
-        return field_questions.get(field, f"Pode me informar o {field}?")
+        if field == "nome":
+            return random.choice(self.name_question_templates)
+        elif field == "telefone":
+            return random.choice(self.phone_question_templates)
+        elif field == "data":
+            return random.choice(self.next_question_templates)
+        elif field == "horario":
+            return random.choice(self.time_question_templates)
+        elif field == "tipo_consulta":
+            return random.choice(self.consultation_question_templates)
+        else:
+            return f"Pode me informar o {field}?"
     
     def _create_confirmation_summary(self, data: Dict[str, Any]) -> str:
         """
-        Cria resumo para confirmação.
+        Cria resumo organizado e amigável para confirmação.
         
         Args:
             data (Dict[str, Any]): Dados para confirmar
             
         Returns:
-            str: Resumo formatado
+            str: Resumo formatado e amigável
         """
         summary_parts = []
-        field_names = {
-            "nome": "Nome",
-            "telefone": "Telefone",
-            "data": "Data",
-            "horario": "Horário",
-            "tipo_consulta": "Tipo de consulta"
-        }
         
-        for field, value in data.items():
-            if value:
-                display_name = field_names.get(field, field.title())
-                summary_parts.append(f"• {display_name}: {value}")
+        if "nome" in data and data["nome"]:
+            summary_parts.append(f"👤 **Paciente:** {data['nome']}")
+        
+        if "telefone" in data and data["telefone"]:
+            summary_parts.append(f"📞 **Telefone:** {data['telefone']}")
+        
+        if "data" in data and data["data"]:
+            summary_parts.append(f"📅 **Data:** {data['data']}")
+        
+        if "horario" in data and data["horario"]:
+            summary_parts.append(f"🕐 **Horário:** {data['horario']}")
+        
+        if "tipo_consulta" in data and data["tipo_consulta"]:
+            summary_parts.append(f"🏥 **Tipo de consulta:** {data['tipo_consulta']}")
         
         return "\n".join(summary_parts)
     
