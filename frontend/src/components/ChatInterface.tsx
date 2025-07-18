@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import ReasoningDebugPanel from './ReasoningDebugPanel'
+import StructuredDataPanel from './StructuredDataPanel'
 
 interface ChatMessage {
   id: string
@@ -106,8 +107,8 @@ const ChatInterface: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Chat Area (2/3) */}
+    <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Chat Area (2/4) */}
       <div className="md:col-span-2">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
           {/* Chat Header */}
@@ -192,9 +193,18 @@ const ChatInterface: React.FC = () => {
           </div>
         </div>
       </div>
-      {/* Reasoning Panel (1/3) */}
+      {/* Reasoning Panel (1/4) */}
       <div className="hidden md:block">
         <ReasoningDebugPanel
+          isVisible={true}
+          isLoading={isLoading}
+          lastResponse={lastResponse}
+        />
+      </div>
+      
+      {/* Structured Data Panel (1/4) */}
+      <div className="hidden md:block">
+        <StructuredDataPanel
           isVisible={true}
           isLoading={isLoading}
           lastResponse={lastResponse}
