@@ -69,7 +69,7 @@ Este documento define **como trabalhar** no projeto Data Structuring Agent. O **
 
 1. **STACK ANALYSIS**: 
    - Que tecnologias vamos usar nesta funcionalidade?
-   - Python? FastAPI? N8N? OpenAI? Docker?
+   - Python? FastAPI? OpenAI? Docker?
    - Versões e compatibilidades específicas
 
 2. **COMPATIBILITY CHECK**:
@@ -91,9 +91,9 @@ Este documento define **como trabalhar** no projeto Data Structuring Agent. O **
    - Fallbacks e recovery necessários?
    - **SCHEMA MIGRATIONS**: Mudanças no modelo exigem ALTER TABLE manual?
 
-5. **N8N INTEGRATION**: 
+5. **WORKFLOW INTEGRATION**:
    - Workflow precisa ser criado/modificado?
-   - Endpoints N8N → FastAPI funcionando?
+   - Endpoints de orquestração funcionando?
    - Formato de request/response compatível?
    - Demonstração visual funcionando?
 
@@ -124,7 +124,7 @@ Este documento define **como trabalhar** no projeto Data Structuring Agent. O **
 - Executar comandos de validação específicos para PowerShell
 - Verificar se todos os CAs foram atendidos
 - Testar integração com sistema existente
-- **Validar N8N workflow** se aplicável
+- **Validar workflow de orquestração** se aplicável
 - NUNCA encerrar funcionalidade com bugs conhecidos
 
 **Revisão de Documentação:**
@@ -443,10 +443,10 @@ Invoke-WebRequest -Uri http://localhost:8000/chat/message -Method POST -ContentT
 #### **Para APIs/Endpoints:**
 - Especificar método HTTP, path, request/response structure
 - Definir validação de entrada (Pydantic models)
-- Considerar integração N8N (formato compatível)
+- Considerar integração de orquestração (formato compatível)
 - Incluir tratamento de erro básico
 
-#### **Para N8N Workflows:**
+#### **Para Workflows de Orquestração:**
 - Especificar nodes necessários
 - Definir input/output esperado
 - Considerar exportabilidade (JSON)
@@ -490,7 +490,7 @@ Invoke-WebRequest -Uri http://localhost:8000/chat/message -Method POST -ContentT
 ### Critérios de "Funcionalidade Concluída"
 - ✅ Todos os critérios de aceite atendidos
 - ✅ Comando de validação PowerShell funcionando
-- ✅ **N8N workflow funcionando** (se aplicável)
+- ✅ **Workflow de orquestração funcionando** (se aplicável)
 - ✅ **Usuário aprovou explicitamente** (feedback coletado)
 - ✅ Commit realizado, documentação atualizada
 - ✅ Chat encerrado para manter contexto focado
@@ -498,7 +498,7 @@ Invoke-WebRequest -Uri http://localhost:8000/chat/message -Method POST -ContentT
 ### Indicadores de Checkpoint Bem-Sucedido
 - ✅ Funcionalidade 100% operacional
 - ✅ Todos os endpoints/componentes testados no PowerShell
-- ✅ **N8N integration validada** (se aplicável)
+- ✅ **Integração de orquestração validada** (se aplicável)
 - ✅ Documentação atualizada e sincronizada
 - ✅ Repositório em estado limpo (`git status` clean)
 - ✅ **Aprovação final confirmada** (sem pendências de feedback)
@@ -577,7 +577,7 @@ Invoke-WebRequest -Uri http://localhost:8000/chat/message -Method POST -ContentT
 ### N8N-Compatible
 - Interface visual desde o início
 - Workflows demonstram funcionalidades
-- Formato de dados compatível com N8N
+- Formato de dados compatível com orquestração
 
 ### Comunicação Eficiente
 - Template estruturado apenas para Cursor
