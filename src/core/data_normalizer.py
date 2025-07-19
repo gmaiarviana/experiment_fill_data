@@ -150,13 +150,23 @@ def normalize_consulta_data(extracted_data: Dict[str, Any]) -> Dict[str, Any]:
         
         if date_value:
             try:
-                date_result = parse_relative_date(str(date_value))
-                if date_result['valid']:
-                    normalized_data['consulta_date'] = date_result['iso_date']
+                # Verifica se já é uma data ISO válida (YYYY-MM-DD)
+                import re
+                iso_date_pattern = r'^\d{4}-\d{2}-\d{2}$'
+                
+                if re.match(iso_date_pattern, str(date_value)):
+                    # Já é uma data ISO válida
+                    normalized_data['consulta_date'] = str(date_value)
                     validation_scores.append(1.0)
                 else:
-                    validation_errors.append(f"Data inválida: {date_result['error']}")
-                    validation_scores.append(0.0)
+                    # Tenta processar como expressão relativa
+                    date_result = parse_relative_date(str(date_value))
+                    if date_result['valid']:
+                        normalized_data['consulta_date'] = date_result['iso_date']
+                        validation_scores.append(1.0)
+                    else:
+                        validation_errors.append(f"Data inválida: {date_result['error']}")
+                        validation_scores.append(0.0)
             except Exception as e:
                 validation_errors.append(f"Erro na validação da data: {str(e)}")
                 validation_scores.append(0.0)

@@ -32,11 +32,11 @@ class EntityExtractor:
                     },
                     "data": {
                         "type": "string",
-                        "description": "Data da consulta no formato YYYY-MM-DD"
+                        "description": "Data da consulta (aceita expressões como 'amanhã', 'próxima segunda', 'semana que vem' ou formato YYYY-MM-DD)"
                     },
                     "horario": {
                         "type": "string",
-                        "description": "Horário da consulta no formato HH:MM"
+                        "description": "Horário da consulta (aceita expressões como '12', '12:00', 'meio-dia', 'tarde', 'manhã' ou formato HH:MM)"
                     },
                     "tipo_consulta": {
                         "type": "string",
@@ -375,14 +375,14 @@ class EntityExtractor:
         temporal_info = self._detect_temporal_expressions(message)
         
         # Processa campo de data se necessário
-        if temporal_info["has_date_expression"] and (not processed_data.get("data") or processed_data["data"] == temporal_info["date_expression"]):
+        if temporal_info["has_date_expression"]:
             date_result = parse_relative_date(temporal_info["date_expression"])
             if date_result["valid"]:
                 processed_data["data"] = date_result["iso_date"]
                 logger.info(f"Data processada: {temporal_info['date_expression']} -> {date_result['iso_date']}")
         
         # Processa campo de horário se necessário
-        if temporal_info["has_time_expression"] and (not processed_data.get("horario") or processed_data["horario"] == temporal_info["time_expression"]):
+        if temporal_info["has_time_expression"]:
             time_result = parse_relative_time(temporal_info["time_expression"])
             if time_result["valid"]:
                 processed_data["horario"] = time_result["time"]

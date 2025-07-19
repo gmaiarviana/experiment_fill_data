@@ -115,6 +115,10 @@ class ConversationManager:
             "extracted_data": context.get("extracted_data", {}).copy()
         }
         
+        # Garante que conversation_history existe
+        if "conversation_history" not in context:
+            context["conversation_history"] = []
+            
         context["conversation_history"].append(history_entry)
         
         # Mantém apenas as últimas 10 interações para evitar crescimento excessivo

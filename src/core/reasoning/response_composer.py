@@ -183,7 +183,8 @@ class ResponseComposer:
                 "action": "ask",
                 "response": question,
                 "missing_fields": missing_fields,
-                "confidence": think_result.get("confidence", 0.7)
+                "confidence": think_result.get("confidence", 0.7),
+                "extracted_data": existing_data  # INCLUIR DADOS EXTRAÍDOS
             }
         else:
             # Fallback se não há campos específicos
@@ -191,7 +192,8 @@ class ResponseComposer:
                 "action": "ask",
                 "response": random.choice(self.name_question_templates),
                 "missing_fields": ["nome"],
-                "confidence": think_result.get("confidence", 0.5)
+                "confidence": think_result.get("confidence", 0.5),
+                "extracted_data": existing_data  # INCLUIR DADOS EXTRAÍDOS
             }
     
     async def _compose_confirm_response(self, think_result: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:

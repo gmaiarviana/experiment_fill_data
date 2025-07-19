@@ -101,7 +101,53 @@ const StructuredDataPanel = ({
     ]
 
     return fieldMappings.map(field => {
-      const value = data[field.key] || data[field.key.replace('nome', 'name')] || data[field.key.replace('telefone', 'phone')] || data[field.key.replace('data', 'consulta_date')]
+      // Mapeamento completo de campos do backend para frontend
+      let value = null
+      
+      // Primeiro tenta buscar nos dados normalizados (estrutura aninhada)
+      if (data.normalized_data) {
+        switch (field.key) {
+          case 'nome':
+            value = data.normalized_data['name'] || data.normalized_data['nome']
+            break
+          case 'telefone':
+            value = data.normalized_data['phone'] || data.normalized_data['telefone']
+            break
+          case 'data':
+            value = data.normalized_data['consulta_date'] || data.normalized_data['data']
+            break
+          case 'horario':
+            value = data.normalized_data['horario'] || data.normalized_data['time']
+            break
+          case 'tipo_consulta':
+            value = data.normalized_data['tipo_consulta'] || data.normalized_data['consulta_type']
+            break
+        }
+      }
+      
+      // Se não encontrou nos dados normalizados, tenta diretamente nos dados
+      if (!value) {
+        switch (field.key) {
+          case 'nome':
+            value = data['name'] || data['nome']
+            break
+          case 'telefone':
+            value = data['phone'] || data['telefone']
+            break
+          case 'data':
+            value = data['consulta_date'] || data['data']
+            break
+          case 'horario':
+            value = data['horario'] || data['time']
+            break
+          case 'tipo_consulta':
+            value = data['tipo_consulta'] || data['consulta_type']
+            break
+          default:
+            value = data[field.key] // Fallback para o campo original
+        }
+      }
+      
       const status = field.validator(value)
       
       return {
@@ -161,6 +207,16 @@ const StructuredDataPanel = ({
   const fields = getFieldInfo()
   const hasData = fields.length > 0
   const overallConfidence = lastResponse?.confidence || 0
+
+  // Debug logs
+  console.log('🔍 StructuredDataPanel Debug:', {
+    lastResponse,
+    extracted_data: lastResponse?.extracted_data,
+    fields,
+    hasData,
+    overallConfidence,
+    isLoading
+  })
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">

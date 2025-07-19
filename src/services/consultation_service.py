@@ -37,12 +37,12 @@ class ConsultationService:
         
         self.logger.info("ConsultationService initialized successfully")
     
-    async def process_and_persist(self, message: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+    async def process_and_persist(self, message: str, session_id: Optional[str] = None, extracted_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Process a natural language message and persist consultation data.
         
         This method orchestrates the complete flow:
-        1. Extract entities from the message
+        1. Extract entities from the message (or use provided extracted_data)
         2. Normalize and validate the extracted data
         3. Persist the consultation record
         4. Return comprehensive result with metadata
@@ -50,6 +50,7 @@ class ConsultationService:
         Args:
             message: Natural language message containing consultation information
             session_id: Optional session ID for tracking (converted to UUID if string)
+            extracted_data: Optional pre-extracted data to use instead of extracting from message
             
         Returns:
             Dictionary containing:
@@ -74,9 +75,21 @@ class ConsultationService:
                     self.logger.warning(f"Invalid session ID format: {session_id}, error: {e}")
                     session_uuid = None
             
-            # Step 1: Extract entities from message
-            self.logger.debug("Step 1: Extracting entities from message")
-            extraction_result = await self.entity_extractor.extract_consulta_entities(message)
+            # Step 1: Extract entities from message or use provided data
+            self.logger.debug("Step 1: Processing entities")
+            
+            if extracted_data:
+                # Use provided extracted data
+                self.logger.info("Using provided extracted data")
+                extraction_result = {
+                    "success": True,
+                    "extracted_data": extracted_data,
+                    "confidence_score": 1.0  # Assume high confidence for provided data
+                }
+            else:
+                # Extract entities from message
+                self.logger.debug("Extracting entities from message")
+                extraction_result = await self.entity_extractor.extract_consulta_entities(message)
             
             if not extraction_result.get("success", False):
                 error_msg = f"Entity extraction failed: {extraction_result.get('error', 'Unknown error')}"
@@ -247,24 +260,25 @@ class ConsultationService:
     
     def list_consultations(self, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
         """
-        List consultations with pagination.
+        List consultations with pagination, ordered by most recent first.
         
         Args:
             skip: Number of records to skip (for pagination)
             limit: Maximum number of records to return
             
         Returns:
-            List of consultation dictionaries
+            List of consultation dictionaries ordered by most recent first
         """
         self.logger.info(f"Listing consultations (skip: {skip}, limit: {limit})")
         
         try:
             with self.session_factory() as session:
                 repository = ConsultaRepository(session)
-                consultas = repository.list(skip=skip, limit=limit)
+                # Use get_recent_consultas to get most recent first
+                consultas = repository.get_recent_consultas(limit=limit)
                 
                 result = [consulta.to_dict() for consulta in consultas]
-                self.logger.info(f"Retrieved {len(result)} consultations")
+                self.logger.info(f"Retrieved {len(result)} consultations (most recent first)")
                 return result
                 
         except Exception as e:

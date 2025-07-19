@@ -9,6 +9,7 @@ from src.core.reasoning_engine import ReasoningEngine
 from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
 from src.core.logging import setup_logging
 from src.core.config import get_settings
+from src.core.database import create_tables
 from src.services.consultation_service import ConsultationService
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -79,6 +80,18 @@ except Exception as e:
 
 # Global session management
 sessions: Dict[str, Dict[str, Any]] = {}
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database tables on startup"""
+    try:
+        logger.info("Creating database tables...")
+        create_tables()
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        # Don't fail startup - log and continue
 
 
 def cleanup_old_sessions():
@@ -204,7 +217,7 @@ async def chat_message(request: Request) -> ChatResponse:
                 # Extract response components
                 action = result.get("action", "unknown")
                 response_text = result.get("response", "Desculpe, não consegui processar sua mensagem.")
-                extracted_data = result.get("data", {})
+                extracted_data = result.get("extracted_data", {})  # CORRIGIDO: era "data", agora "extracted_data"
                 confidence = result.get("confidence", 0.0)
                 
                 # Log reasoning results
@@ -219,12 +232,15 @@ async def chat_message(request: Request) -> ChatResponse:
                 # Se temos dados extraídos e ação é "extract", "confirm" ou "complete", tentar persistir
                 if extracted_data and action in ["extract", "confirm", "complete"] and consultation_service is not None:
                     try:
+                        logger.info(f"Extracted data for persistence: {extracted_data}")
+                        logger.info(f"Action: {action}, Consultation service available: {consultation_service is not None}")
                         logger.info("Tentando persistir dados extraídos via ConsultationService")
                         
                         # Processar e persistir dados
                         persistence_result = await consultation_service.process_and_persist(
                             chat_request.message, 
-                            session_id
+                            session_id,
+                            extracted_data.get("normalized_data", {})  # Passa os dados já extraídos
                         )
                         
                         if persistence_result.get("success", False):

@@ -57,7 +57,7 @@ class ConversationFlow:
         try:
             logger.info(f"Extraindo dados da mensagem: '{message[:50]}...'")
             
-            # Extrai entidades usando EntityExtractor
+            # Extrai entidades usando EntityExtractor com contexto para acumulação
             extraction_result = await self.entity_extractor.extract_consulta_entities(message, context)
             
             if extraction_result.get("success"):
@@ -161,7 +161,18 @@ class ConversationFlow:
         """
         # Atualiza dados extraídos se houver
         if extract_result and extract_result.get("extracted_data"):
-            context["extracted_data"].update(extract_result["extracted_data"])
+            # O EntityExtractor retorna dados em estrutura aninhada
+            extracted_data = extract_result["extracted_data"]
+            
+            # Se os dados estão em normalized_data, usa eles
+            if isinstance(extracted_data, dict) and "normalized_data" in extracted_data:
+                normalized_data = extracted_data["normalized_data"]
+                context["extracted_data"].update(normalized_data)
+                logger.info(f"Contexto atualizado com dados normalizados: {list(normalized_data.keys())}")
+            else:
+                # Caso contrário, usa os dados diretamente
+                context["extracted_data"].update(extracted_data)
+                logger.info(f"Contexto atualizado com dados diretos: {list(extracted_data.keys())}")
         
         # Atualiza métricas de confidence
         confidence = act_result.get("confidence", 0.0)

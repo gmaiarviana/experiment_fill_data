@@ -55,7 +55,8 @@ class ReasoningCoordinator:
             
             # EXTRACT: Extrai dados se necessário
             extract_result = None
-            if think_result["action"] in ["extract", "extract_and_ask"]:
+            # Sempre tenta extrair dados se a mensagem tem potencial de dados
+            if think_result["action"] in ["extract", "extract_and_ask"] or self.fallback_handler._has_data_potential(message):
                 extract_result = await self._execute_extract(message, context)
                 logger.debug(f"EXTRACT: {extract_result}")
                 
@@ -156,6 +157,13 @@ class ReasoningCoordinator:
         
         # Atualiza métricas de confidence
         confidence = act_result.get("confidence", 0.0)
+        
+        # Inicializa métricas se não existirem
+        if "total_confidence" not in context:
+            context["total_confidence"] = 0.0
+        if "confidence_count" not in context:
+            context["confidence_count"] = 0
+            
         context["total_confidence"] += confidence
         context["confidence_count"] += 1
         context["average_confidence"] = context["total_confidence"] / context["confidence_count"]
