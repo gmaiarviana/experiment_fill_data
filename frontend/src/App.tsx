@@ -15,11 +15,9 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [isPolling, setIsPolling] = useState(false)
   const [sessionId, setSessionId] = useState<string>('')
   const [lastResponse, setLastResponse] = useState<ChatResponse | undefined>(undefined)
   const [apiHealth, setApiHealth] = useState<boolean>(true)
-  const pollingIntervalRef = useRef<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Inicializar session_id
@@ -41,58 +39,6 @@ function App() {
     return () => clearInterval(healthInterval)
   }, [])
 
-  // Função para iniciar polling
-  const startPolling = (response: ChatResponse) => {
-    if (response.status === 'processing') {
-      setIsPolling(true)
-      setLastResponse(response)
-      
-      // Polling inteligente: 500ms durante processamento
-      pollingIntervalRef.current = setInterval(async () => {
-        try {
-          const updatedResponse = await sendMessage('', sessionId) // Polling com mensagem vazia
-          setLastResponse(updatedResponse)
-          
-          if (updatedResponse.status === 'completed' || updatedResponse.status === 'error') {
-            stopPolling()
-            
-            // Adicionar resposta final ao chat
-            const botMessage: ChatMessage = {
-              id: Date.now().toString(),
-              text: updatedResponse.response,
-              isUser: false,
-              timestamp: new Date()
-            }
-            setMessages((prev: ChatMessage[]) => [...prev, botMessage])
-          }
-        } catch (error) {
-          console.error('Erro no polling:', error)
-          stopPolling()
-        }
-      }, 500)
-    } else {
-      // Resposta imediata, não precisa de polling
-      setLastResponse(response)
-      const botMessage: ChatMessage = {
-        id: Date.now().toString(),
-        text: response.response,
-        isUser: false,
-        timestamp: new Date()
-      }
-      setMessages((prev: ChatMessage[]) => [...prev, botMessage])
-    }
-  }
-
-  // Função para parar polling
-  const stopPolling = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-      pollingIntervalRef.current = null
-    }
-    setIsPolling(false)
-    setIsLoading(false)
-  }
-
   // Função para enviar mensagem
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading || !apiHealth) return
@@ -104,13 +50,22 @@ function App() {
       timestamp: new Date()
     }
 
-          setMessages((prev: ChatMessage[]) => [...prev, userMessage])
+    setMessages((prev: ChatMessage[]) => [...prev, userMessage])
     setInputMessage('')
     setIsLoading(true)
 
     try {
       const response = await sendMessage(inputMessage, sessionId)
-      startPolling(response)
+      setLastResponse(response)
+      
+      // Adicionar resposta do bot ao chat
+      const botMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        text: response.response,
+        isUser: false,
+        timestamp: new Date()
+      }
+      setMessages((prev: ChatMessage[]) => [...prev, botMessage])
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error)
       const errorMessage: ChatMessage = {
@@ -120,6 +75,7 @@ function App() {
         timestamp: new Date()
       }
       setMessages((prev: ChatMessage[]) => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
     }
   }
@@ -140,15 +96,6 @@ function App() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
-
-  // Cleanup do polling ao desmontar
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
-    }
-  }, [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -218,7 +165,7 @@ function App() {
                   </div>
                 ))}
                 
-                {(isLoading || isPolling) && (
+                {isLoading && (
                   <div className="flex justify-start">
                     <div className="bg-gray-200 text-gray-800 max-w-xs lg:max-w-md px-4 py-2 rounded-lg">
                       <div className="flex items-center space-x-2">
@@ -228,7 +175,7 @@ function App() {
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                         </div>
                         <span className="text-sm">
-                          {isPolling ? 'Processando dados...' : 'Enviando mensagem...'}
+                          Enviando mensagem...
                         </span>
                       </div>
                     </div>
@@ -247,12 +194,12 @@ function App() {
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Digite sua mensagem..."
-                    disabled={isLoading || isPolling || !apiHealth}
+                    disabled={isLoading || !apiHealth}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                   />
                   <button
                     onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isLoading || isPolling || !apiHealth}
+                    disabled={!inputMessage.trim() || isLoading || !apiHealth}
                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     Enviar
@@ -266,7 +213,7 @@ function App() {
           <div className="hidden md:block">
             <ReasoningDebugPanel
               isVisible={true}
-              isLoading={isLoading || isPolling}
+              isLoading={isLoading}
               lastResponse={lastResponse}
             />
           </div>
@@ -275,7 +222,7 @@ function App() {
           <div className="hidden md:block">
             <StructuredDataPanel
               isVisible={true}
-              isLoading={isLoading || isPolling}
+              isLoading={isLoading}
               lastResponse={lastResponse}
             />
           </div>
