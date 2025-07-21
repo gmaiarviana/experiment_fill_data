@@ -223,31 +223,21 @@ class ServiceContainer:
 
 ---
 
-### **7. Logging Inconsistente**
+### 7. Logging Inconsistente
 
-**Problema**: Logging não padronizado entre módulos
-- Alguns módulos usam `loguru`, outros `logging`
-- Níveis de log inconsistentes
-- Falta contexto estruturado
-- Difícil rastrear fluxo de execução
+**Status: ✅ RESOLVIDO em 2025-07-21**
 
-**Impacto**:
-- Debugging difícil
-- Monitoramento ineficiente
-- Falta visibilidade em produção
-- Performance degradada por logs desnecessários
+**Ações realizadas:**
+- Criado módulo `src/core/logging/logger_factory.py` com logger estruturado (JSON)
+- Todos os módulos que usavam `loguru` ou `logging` migrados para o novo padrão (`database.py`, `reasoning_coordinator.py`, `llm_strategist.py`, `fallback_handler.py`, `conversation_flow.py`, `response_composer.py`, `main.py`, `api/main.py`)
+- Removido antigo `setup_logging` e imports obsoletos
+- Logs agora padronizados em JSON no console Docker
+- Backend validado em ambiente Docker, logs emitidos corretamente
 
-**Solução Proposta**:
-```python
-# Novo: src/core/logging/
-├── logger_factory.py        # Factory para loggers
-├── structured_logger.py     # Logger estruturado
-├── performance_logger.py    # Logger de performance
-└── audit_logger.py          # Logger de auditoria
-```
-
-**Esforço**: 1 sprint
-**Benefício**: Debugging 60% mais fácil, monitoramento melhorado
+**Benefício:**
+- Debugging e rastreabilidade facilitados
+- Monitoramento estruturado
+- Padrão único para todo o backend
 
 ---
 
