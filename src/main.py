@@ -10,7 +10,7 @@ import logging
 from typing import Optional, List
 
 from .core.config import get_settings
-from .core.logging import setup_logging
+from .core.logging.logger_factory import get_logger
 from .core.entity_extraction import EntityExtractor
 from .core.validators import validate_brazilian_phone, parse_relative_date, normalize_name, calculate_validation_confidence
 from .core.data_normalizer import normalize_consulta_data
@@ -21,8 +21,8 @@ from sqlalchemy import text
 import asyncio
 
 # Setup logging
-setup_logging()
-logger = logging.getLogger(__name__)
+# setup_logging() # This line is removed as per the edit hint.
+logger = get_logger(__name__)
 
 
 def test_entity_extraction(text: str) -> None:

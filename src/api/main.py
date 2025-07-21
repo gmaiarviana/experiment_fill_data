@@ -7,7 +7,7 @@ from src.core.openai_client import OpenAIClient
 from src.core.entity_extraction import EntityExtractor
 from src.core.reasoning_engine import ReasoningEngine
 from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
-from src.core.logging import setup_logging
+from src.core.logging.logger_factory import get_logger
 from src.core.config import get_settings
 from src.core.database import create_tables
 from src.services.consultation_service import ConsultationService
@@ -20,7 +20,7 @@ import json
 settings = get_settings()
 
 # Setup logging with configured log level
-logger = setup_logging()
+logger = get_logger(__name__)
 
 app = FastAPI(
     title=settings.APP_NAME,
