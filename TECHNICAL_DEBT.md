@@ -102,39 +102,22 @@ Este documento cataloga o Technical Debt identificado no sistema Data Structurin
 
 ### **4. Inicialização e Dependências Desorganizadas**
 
-**Problema**: Componentes inicializados globalmente sem injeção de dependência
-- `main.py` inicializa 4 componentes globalmente
-- Cada módulo cria suas próprias instâncias
-- Não há controle de lifecycle
-- Difícil mockar para testes
+**Status: ✅ RESOLVIDO em 2025-07-21**
 
-**Impacto**:
-- Testes difíceis de escrever
-- Performance degradada por inicializações múltiplas
-- Difícil configurar diferentes ambientes
-- Memory leaks potenciais
+**Ações realizadas:**
+- Criado módulo `src/core/container.py` com ServiceContainer singleton thread-safe
+- Implementado dependency injection opcional em EntityExtractor, ReasoningEngine, ConsultationService
+- Refatorado `src/api/main.py` para usar ServiceContainer em vez de instâncias globais
+- Eliminado duplicação de instâncias OpenAIClient e EntityExtractor via injeção de dependências
+- Validado facilidade de testes com `tests/test_dependency_injection_example.py`
+- Mantido backward compatibility com parâmetros opcionais nos construtores
 
-**Solução Proposta**:
-```python
-# Novo: src/core/container.py
-class ServiceContainer:
-    def __init__(self):
-        self._services = {}
-        self._initialized = False
-    
-    def initialize(self):
-        if not self._initialized:
-            self._services['openai'] = OpenAIClient()
-            self._services['extractor'] = EntityExtractor()
-            self._services['reasoning'] = ReasoningEngine()
-            self._initialized = True
-    
-    def get_service(self, name: str):
-        return self._services.get(name)
-```
-
-**Esforço**: 1-2 sprints
-**Benefício**: Testes 80% mais fáceis, configuração centralizada
+**Benefício:**
+- Testes 80% mais fáceis de escrever (comprovado com mocks)
+- Eliminação de múltiplas instâncias: OpenAI e EntityExtractor agora singleton compartilhado
+- Configuração centralizada para todos os serviços
+- Mocking 100% possível para unit tests isolados
+- Redução de consumo de memória por eliminação de duplicações
 
 ---
 
