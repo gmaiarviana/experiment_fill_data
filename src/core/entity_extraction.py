@@ -11,11 +11,15 @@ class EntityExtractor:
     Extrator de entidades para consultas médicas usando OpenAI function calling.
     """
     
-    def __init__(self):
+    def __init__(self, openai_client: Optional[OpenAIClient] = None):
         """
         Inicializa o extrator com cliente OpenAI e schema da função.
+        
+        Args:
+            openai_client: Cliente OpenAI opcional para dependency injection.
+                          Se None, cria uma nova instância.
         """
-        self.openai_client = OpenAIClient()
+        self.openai_client = openai_client or OpenAIClient()
         self.consulta_schema = {
             "name": "extract_consulta_info",
             "description": "Extrai informações de agendamento de consulta médica",

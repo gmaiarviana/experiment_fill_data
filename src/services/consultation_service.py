@@ -27,11 +27,14 @@ class ConsultationService:
     data normalization, validation, and database persistence.
     """
     
-    def __init__(self):
+    def __init__(self, entity_extractor: Optional[EntityExtractor] = None):
         """
         Initialize the ConsultationService with required components.
+        
+        Args:
+            entity_extractor: EntityExtractor opcional para dependency injection
         """
-        self.entity_extractor = EntityExtractor()
+        self.entity_extractor = entity_extractor or EntityExtractor()
         self.session_factory = get_session_factory()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         

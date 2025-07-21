@@ -57,13 +57,25 @@ class ServiceContainer:
             self._services['openai_client'] = OpenAIClient()
         
         if 'entity_extractor' not in self._services:
-            self._services['entity_extractor'] = EntityExtractor()
+            # Inject OpenAI client to avoid duplication
+            openai_client = self._services['openai_client']
+            self._services['entity_extractor'] = EntityExtractor(openai_client=openai_client)
         
         if 'reasoning_engine' not in self._services:
-            self._services['reasoning_engine'] = ReasoningEngine()
+            # Inject shared dependencies to avoid duplication
+            openai_client = self._services['openai_client']
+            entity_extractor = self._services['entity_extractor']
+            self._services['reasoning_engine'] = ReasoningEngine(
+                openai_client=openai_client,
+                entity_extractor=entity_extractor
+            )
         
         if 'consultation_service' not in self._services:
-            self._services['consultation_service'] = ConsultationService()
+            # Inject shared EntityExtractor to avoid duplication
+            entity_extractor = self._services['entity_extractor']
+            self._services['consultation_service'] = ConsultationService(
+                entity_extractor=entity_extractor
+            )
     
     def get_service(self, service_name: str) -> Any:
         """

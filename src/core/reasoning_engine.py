@@ -20,19 +20,27 @@ class ReasoningEngine:
     REFATORADO: Agora usa módulos especializados internamente mantendo API 100% compatível.
     """
     
-    def __init__(self):
+    def __init__(self, 
+                 openai_client: Optional[OpenAIClient] = None,
+                 entity_extractor: Optional[EntityExtractor] = None):
         """
         Inicializa o motor de raciocínio com o coordenador modular.
+        
+        Args:
+            openai_client: Cliente OpenAI opcional para dependency injection
+            entity_extractor: EntityExtractor opcional para dependency injection
         """
+        # Initialize shared dependencies
+        self.openai_client = openai_client or OpenAIClient()
+        self.entity_extractor = entity_extractor or EntityExtractor(openai_client=self.openai_client)
+        
         # Coordenador modular que orquestra todos os componentes
         self.coordinator = ReasoningCoordinator()
         
         # Componentes legados mantidos para compatibilidade
-        self.entity_extractor = EntityExtractor()
         self.question_generator = QuestionGenerator()
         self.data_summarizer = DataSummarizer()
         self.conversation_manager = ConversationManager()
-        self.openai_client = OpenAIClient()
         
         logger.info("ReasoningEngine refatorado inicializado com coordenador modular")
     
