@@ -4,7 +4,8 @@ Coordena os componentes especializados para processamento inteligente de mensage
 """
 
 from typing import Dict, Any, Optional
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
+logger = get_logger(__name__)
 from .llm_strategist import LLMStrategist
 from .conversation_flow import ConversationFlow
 from .response_composer import ResponseComposer
