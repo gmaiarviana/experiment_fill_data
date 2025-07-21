@@ -117,20 +117,12 @@ class ResponseComposer:
     async def _compose_extract_response(self, think_result: Dict[str, Any], extract_result: Optional[Dict[str, Any]], 
                                       validate_result: Optional[Dict[str, Any]], context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Compõe resposta para ação de extração.
-        
-        Args:
-            think_result (Dict[str, Any]): Resultado da análise
-            extract_result (Optional[Dict[str, Any]]): Resultado da extração
-            validate_result (Optional[Dict[str, Any]]): Resultado da validação
-            context (Dict[str, Any]): Contexto da sessão
-            
-        Returns:
-            Dict: Resposta para extração
+        Compõe resposta para ação de extração, usando completion_strategy do contexto.
         """
         extracted_data = extract_result.get("extracted_data", {}) if extract_result else {}
         validation_errors = validate_result.get("validation_errors", []) if validate_result else []
-        
+        completion_strategy = context.get("completion_strategy")
+        progression_pattern = context.get("progression_pattern", "indefinido")
         # Se há erros de validação, solicita correção
         if validation_errors:
             error_message = self._format_validation_errors(validation_errors)
@@ -141,14 +133,21 @@ class ResponseComposer:
                 "validation_errors": validation_errors,
                 "confidence": think_result.get("confidence", 0.5)
             }
-        
         # Se extraiu dados válidos, confirma e pergunta próximo campo
         if extracted_data:
-            confirmation = self._create_extraction_confirmation(extracted_data, context)
-            next_question = self._get_next_question(context, extracted_data)
-            
-            response = f"{confirmation} {next_question}"
-            
+            correction_msg = self._detect_correction_context(context, extracted_data)
+            if completion_strategy:
+                next_step = completion_strategy
+            else:
+                next_step = self._get_next_question(context, extracted_data)
+            confirmation = self._create_smart_confirmation(extracted_data, context)
+            response = f"{confirmation} {next_step}"
+            if correction_msg:
+                response = f"{correction_msg} {response}"
+            # Adiciona resposta antecipatória se padrão for randômico
+            if progression_pattern == "randômico":
+                anticipatory = self._create_anticipatory_response(context, extracted_data)
+                response = f"{confirmation} {anticipatory}"
             return {
                 "action": "extract",
                 "response": response,
@@ -156,7 +155,6 @@ class ResponseComposer:
                 "validation_errors": [],
                 "confidence": think_result.get("confidence", 0.8)
             }
-        
         # Se não extraiu nada, pergunta diretamente
         return await self._compose_ask_response(think_result, context)
     
@@ -318,39 +316,33 @@ class ResponseComposer:
     
     def _get_next_question(self, context: Dict[str, Any], extracted_data: Dict[str, Any]) -> str:
         """
-        Gera próxima pergunta com progressão contextual fluida.
-        
-        Args:
-            context (Dict[str, Any]): Contexto da sessão
-            extracted_data (Dict[str, Any]): Dados extraídos
-            
-        Returns:
-            str: Próxima pergunta contextual
+        Gera próxima pergunta com progressão contextual fluida e baseada no padrão de progressão.
         """
         all_data = context.get("extracted_data", {}).copy()
         all_data.update(extracted_data)
-        
         missing_fields = self._get_missing_fields(all_data)
-        
+        progression_pattern = context.get("progression_pattern", "indefinido")
         if not missing_fields:
             return "Agora posso confirmar os dados da sua consulta?"
-        
         next_field = missing_fields[0]
-        
-        # Progressão contextual baseada no que já foi coletado
-        if next_field == "data" and "nome" in all_data:
-            nome = all_data["nome"]
-            primeiro_nome = nome.split()[0] if nome else "você"
-            return f"{primeiro_nome}, para qual data você gostaria de agendar?"
-        
-        elif next_field == "horario" and "data" in all_data:
-            return f"Que horário seria melhor para o dia {all_data['data']}?"
-        
-        elif next_field == "tipo_consulta" and "nome" in all_data:
-            nome = all_data["nome"]
-            primeiro_nome = nome.split()[0] if nome else "você"
-            return f"{primeiro_nome}, que tipo de consulta você precisa?"
-        
+        # Variação baseada no padrão de progressão
+        if progression_pattern == "sequencial":
+            if next_field == "data" and "nome" in all_data:
+                nome = all_data["nome"]
+                primeiro_nome = nome.split()[0] if nome else "você"
+                return f"{primeiro_nome}, para qual data você gostaria de agendar?"
+            elif next_field == "horario" and "data" in all_data:
+                return f"Que horário seria melhor para o dia {all_data['data']}?"
+            elif next_field == "tipo_consulta" and "nome" in all_data:
+                nome = all_data["nome"]
+                primeiro_nome = nome.split()[0] if nome else "você"
+                return f"{primeiro_nome}, que tipo de consulta você precisa?"
+            else:
+                return self._generate_field_question(next_field, all_data)
+        elif progression_pattern == "randômico":
+            # Para padrão randômico, sugere resumo e pergunta aberta
+            summary = self._create_confirmation_summary(all_data)
+            return f"Ótimo! Já tenho: {summary}. Qual informação deseja informar agora?"
         else:
             return self._generate_field_question(next_field, all_data)
     
@@ -446,3 +438,49 @@ class ResponseComposer:
             return errors[0]
         else:
             return "; ".join(errors[:-1]) + f" e {errors[-1]}" 
+
+    def _create_smart_confirmation(self, extracted_data: Dict[str, Any], context: Dict[str, Any]) -> str:
+        """
+        Cria confirmação inteligente usando antecipação contextual do próximo campo.
+        """
+        anticipated_next = context.get("anticipated_next", [])
+        confirmation = self._create_extraction_confirmation(extracted_data, context)
+        if anticipated_next:
+            next_field = anticipated_next[0]
+            next_hint = self._generate_field_question(next_field, extracted_data)
+            return f"{confirmation} {next_hint}"
+        return confirmation
+
+    def _detect_correction_context(self, context: Dict[str, Any], new_data: Dict[str, Any]) -> Optional[str]:
+        """
+        Detecta se houve correção de dados e retorna mensagem apropriada.
+        """
+        previous_data = context.get("extracted_data", {})
+        corrections = []
+        for key, value in new_data.items():
+            if key in previous_data and previous_data[key] != value:
+                corrections.append(key)
+        if corrections:
+            fields = ", ".join([self._get_field_display_name(f) for f in corrections])
+            return f"Entendi, você corrigiu o(s) campo(s): {fields}. Obrigado pela atualização!"
+        return None
+
+    def _create_anticipatory_response(self, context: Dict[str, Any], extracted_data: Dict[str, Any]) -> str:
+        """
+        Sugere próximo campo logicamente, usando antecipação contextual.
+        """
+        anticipated_next = context.get("anticipated_next", [])
+        if anticipated_next:
+            next_field = anticipated_next[0]
+            return self._generate_field_question(next_field, extracted_data)
+        return "Há mais algum dado que gostaria de informar?"
+
+    def _get_field_display_name(self, field: str) -> str:
+        field_mapping = {
+            "nome": "Nome",
+            "telefone": "Telefone",
+            "data": "Data",
+            "horario": "Horário",
+            "tipo_consulta": "Tipo de consulta"
+        }
+        return field_mapping.get(field, field.title()) 
