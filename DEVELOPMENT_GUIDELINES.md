@@ -358,6 +358,12 @@ Sempre começar validando onde estamos:
 ```
 
 ### 2. REFLEXÃO TÉCNICA (OBRIGATÓRIA)
+**Checklist Anti-Retrabalho:**
+- [ ] Caracteres especiais: Usar apenas ASCII em comandos PowerShell de teste
+- [ ] F-strings: Verificar se não contém backslash em expressões
+- [ ] Imports: Confirmar se módulos existem antes de especificar
+- [ ] Responsabilidades: Cursor implementa, Claude testa
+
 - Executar os 6 passos da reflexão técnica antes de qualquer implementação
 - Documentar decisões críticas de compatibilidade
 - Validar estratégia de prompts para PowerShell
@@ -457,6 +463,38 @@ Invoke-WebRequest -Uri http://localhost:8000/chat/message -Method POST -ContentT
 - Definir prompt structure e examples
 - Incluir fallback para API failures
 - Considerar cost optimization
+
+### Prevenção de Erros de Encoding e Retrabalho
+
+**PowerShell UTF-8 Issues:**
+- ❌ NUNCA usar caracteres acentuados (ã, ç, é) em comandos de teste PowerShell
+- ✅ SEMPRE usar versões sem acento: "nao" em vez de "não", "Joao" em vez de "João"
+- ✅ Comandos de validação devem ser testáveis diretamente sem conversão de encoding
+
+**F-String Syntax Errors:**
+- ❌ NUNCA usar backslash (\n) dentro de f-string expressions: f"{texto_com_\n}"
+- ✅ SEMPRE usar raw strings ou variáveis separadas para strings com quebras de linha
+- ✅ Preferir templates separados: template = "texto\ncom\nquebras" ; f"{template}"
+
+**Responsabilidade de Testes:**
+- ❌ NUNCA pedir ao Cursor para fazer testes ou validações
+- ✅ Cursor implementa funcionalidade, Claude executa comandos PowerShell de validação
+- ✅ Prompts para Cursor focam apenas em implementação técnica
+
+### Evitando Erros Recorrentes
+
+**❌ Erro de Encoding:**
+Testar endpoint com "João Silva"
+
+**✅ Correto:**
+Testar endpoint com "Joao Silva" (sem acentos para PowerShell)
+
+**❌ F-String Error:**
+f"texto com \n quebras {variavel}"
+
+**✅ Correto:**
+template = "texto com \n quebras"
+f"{template} {variavel}"
 
 ### Lições de Eficiência para Prompts
 
