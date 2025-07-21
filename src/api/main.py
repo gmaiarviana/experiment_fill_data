@@ -3,14 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequest, EntityExtractionResponse, ValidationRequest, ValidationResponse
 from src.api.routers.system import router as system_router
-from src.core.openai_client import OpenAIClient
-from src.core.entity_extraction import EntityExtractor
-from src.core.reasoning_engine import ReasoningEngine
+# Imports moved to container for centralized management
 from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
 from src.core.logging.logger_factory import get_logger
 from src.core.config import get_settings
 from src.core.database import create_tables
-from src.services.consultation_service import ConsultationService
+# ConsultationService imported via container
 from datetime import datetime
 from typing import Dict, Any, Optional
 import uuid
@@ -46,37 +44,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize OpenAI client
-try:
-    openai_client = OpenAIClient()
-    logger.info("OpenAI client inicializado com sucesso")
-except Exception as e:
-    logger.error(f"Erro ao inicializar OpenAI client: {e}")
-    openai_client = None
+# Initialize services using ServiceContainer
+from src.core.container import (
+    ServiceContainer, 
+    get_openai_client, 
+    get_entity_extractor, 
+    get_reasoning_engine, 
+    get_consultation_service
+)
 
-# Initialize Entity Extractor
+# Initialize service container
 try:
-    entity_extractor = EntityExtractor()
-    logger.info("Entity Extractor inicializado com sucesso")
+    service_container = ServiceContainer()
+    service_container.initialize_services()
+    logger.info("ServiceContainer inicializado com todos os servicos")
 except Exception as e:
-    logger.error(f"Erro ao inicializar Entity Extractor: {e}")
-    entity_extractor = None
-
-# Initialize Reasoning Engine
-try:
-    reasoning_engine = ReasoningEngine()
-    logger.info("Reasoning Engine inicializado com sucesso")
-except Exception as e:
-    logger.error(f"Erro ao inicializar Reasoning Engine: {e}")
-    reasoning_engine = None
-
-# Initialize Consultation Service
-try:
-    consultation_service = ConsultationService()
-    logger.info("Consultation Service inicializado com sucesso")
-except Exception as e:
-    logger.error(f"Erro ao inicializar Consultation Service: {e}")
-    consultation_service = None
+    logger.error(f"Erro ao inicializar ServiceContainer: {e}")
+    service_container = None
 
 # Global session management
 sessions: Dict[str, Dict[str, Any]] = {}
@@ -187,8 +171,10 @@ async def chat_message(request: Request) -> ChatResponse:
             cleanup_old_sessions()
         
         # Process message with ReasoningEngine
+        reasoning_engine = get_reasoning_engine()
         if reasoning_engine is None:
             logger.warning("Reasoning Engine não disponível, usando fallback OpenAI")
+            openai_client = get_openai_client()
             if openai_client is None:
                 return ChatResponse(
                     response="Desculpe, o serviço de IA não está disponível no momento. Tente novamente mais tarde.",
@@ -230,6 +216,7 @@ async def chat_message(request: Request) -> ChatResponse:
                 persistence_status = "not_applicable"
                 
                 # Se temos dados extraídos e ação é "extract", "confirm" ou "complete", tentar persistir
+                consultation_service = get_consultation_service()
                 if extracted_data and action in ["extract", "confirm", "complete"] and consultation_service is not None:
                     try:
                         logger.info(f"Extracted data for persistence: {extracted_data}")
@@ -288,6 +275,7 @@ async def chat_message(request: Request) -> ChatResponse:
             except Exception as e:
                 logger.error(f"Erro no ReasoningEngine: {str(e)}")
                 # Fallback to OpenAI if ReasoningEngine fails
+                openai_client = get_openai_client()
                 if openai_client is not None:
                     logger.info("Usando fallback OpenAI devido a erro no ReasoningEngine")
                     ai_response = await openai_client.chat_completion(chat_request.message)
@@ -358,6 +346,7 @@ async def extract_entities(request: Request) -> EntityExtractionResponse:
             raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
         
         # Process entity extraction
+        entity_extractor = get_entity_extractor()
         if entity_extractor is None:
             logger.warning("Entity Extractor não disponível")
             return EntityExtractionResponse(
@@ -523,6 +512,7 @@ async def get_session_info(session_id: str):
         context = sessions[session_id]
         
         # Get session summary using ReasoningEngine
+        reasoning_engine = get_reasoning_engine()
         if reasoning_engine:
             summary = reasoning_engine.get_context_summary(context)
         else:
@@ -608,6 +598,7 @@ async def list_consultations():
     logger.info("=== INÍCIO: Endpoint /consultations ===")
     
     try:
+        consultation_service = get_consultation_service()
         if consultation_service is None:
             raise HTTPException(status_code=503, detail="Consultation service não disponível")
         
@@ -638,6 +629,7 @@ async def get_consultation(consultation_id: int):
     logger.info(f"=== INÍCIO: Endpoint /consultations/{consultation_id} ===")
     
     try:
+        consultation_service = get_consultation_service()
         if consultation_service is None:
             raise HTTPException(status_code=503, detail="Consultation service não disponível")
         
