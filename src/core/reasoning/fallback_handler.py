@@ -6,7 +6,8 @@ Implementa estratégias de fallback para garantir funcionamento mesmo sem LLM.
 from typing import Dict, Any, List
 import re
 from datetime import datetime, timedelta
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
+logger = get_logger(__name__)
 
 
 class FallbackHandler:

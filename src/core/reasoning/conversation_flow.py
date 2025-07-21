@@ -5,7 +5,8 @@ Controla extração de dados, validação e gerenciamento de contexto conversaci
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
+logger = get_logger(__name__)
 from src.core.entity_extraction import EntityExtractor
 from src.core.data_normalizer import normalize_consulta_data
 from src.core.validators import validate_consulta_data

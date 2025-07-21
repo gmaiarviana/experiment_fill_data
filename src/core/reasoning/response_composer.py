@@ -5,7 +5,8 @@ Gera respostas conversacionais baseadas no contexto e resultados do reasoning.
 
 from typing import Dict, Any, Optional, List
 import random
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
+logger = get_logger(__name__)
 from src.core.question_generator import QuestionGenerator
 
 

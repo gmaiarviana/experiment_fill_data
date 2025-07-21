@@ -5,7 +5,8 @@ Gerencia estratégias de análise usando OpenAI com fallback para lógica Python
 
 from typing import Dict, Any, List
 import re  # Adicionado para detecção de intenções
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
+logger = get_logger(__name__)
 from src.core.openai_client import OpenAIClient
 from .fallback_handler import FallbackHandler
 
