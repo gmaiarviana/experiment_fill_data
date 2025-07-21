@@ -14,9 +14,10 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError, OperationalError
 
 from .config import get_settings
+from src.core.logging.logger_factory import get_logger
 
 # Configure logging
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 # Create declarative base for models
 Base = declarative_base()
