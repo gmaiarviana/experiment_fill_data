@@ -102,11 +102,13 @@ AÇÕES POSSÍVEIS:
 - "confirm": Solicitar confirmação (quando dados parecem completos ou usuário confirma)
 - "complete": Finalizar agendamento (quando tudo está confirmado)
 - "correction": Usuário corrigiu dado já informado
-- "error": Erro no processamento
+- "invalid": Mensagem não relacionada ao domínio médico/agendamento
+- "clarify": Mensagem ambígua que precisa esclarecimento
+- "error": Erro técnico no processamento (use apenas para erros reais)
 
 RESPONDA APENAS COM JSON válido no formato:
 {{
-    "action": "extract|ask|confirm|complete|correction|error",
+    "action": "extract|ask|confirm|complete|correction|invalid|clarify|error",
     "reason": "explicação da decisão",
     "confidence": 0.0-1.0,
     "response": "resposta para o usuário (se aplicável)",
