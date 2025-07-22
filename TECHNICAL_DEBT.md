@@ -4,51 +4,15 @@
 
 Documento completo catalogando débito técnico identificado em 2025. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
 
-**✅ RESOLVIDO**: #2 - ARQUIVOS LEGADOS OBSOLETOS (2025-01-21)
+**✅ RESOLVIDO**: 
+- #1 - IMPORTS OBSOLETOS E DEPENDÊNCIAS MORTAS (2025-01-21)
+- #2 - ARQUIVOS LEGADOS OBSOLETOS (2025-01-21)
 
 ---
 
 ## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
 
-### **#1 - IMPORTS OBSOLETOS E DEPENDÊNCIAS MORTAS**
-**🎯 Impacto**: Sistema pode falhar em runtime, confusão sobre qual código usar
-
-**Problemas Identificados**:
-```python
-# ❌ OBSOLETO em src/main.py (lines 12-13):
-from .core.validators import validate_brazilian_phone, parse_relative_date, normalize_name, calculate_validation_confidence
-from .core.data_normalizer import normalize_consulta_data
-
-# ❌ INCONSISTENTE - Mistura de sistemas de logging:
-from loguru import logger              # conversation_manager.py, reasoning_engine.py
-from src.core.logging.logger_factory import get_logger  # outros arquivos
-
-# ❌ IMPORTS INEXISTENTES em entity_extraction.py:
-from somewhere import parse_relative_date, parse_relative_time  # Funções não existem
-```
-
-**Ação Necessária**:
-```python
-# ✅ SUBSTITUIR imports em src/main.py:
-from src.core.validation.normalizers.data_normalizer import DataNormalizer
-
-# ✅ PADRONIZAR logging em TODOS os arquivos:
-from src.core.logging.logger_factory import get_logger
-logger = get_logger(__name__)
-
-# ✅ REMOVER imports inexistentes
-# ✅ ATUALIZAR test_validation() para usar DataNormalizer
-```
-
-**Arquivos Afetados**:
-- `src/main.py` (função test_validation)
-- `src/core/conversation_manager.py`
-- `src/core/reasoning_engine.py`
-- `src/core/entity_extraction.py`
-
----
-
-### **#2 - REASONING ENGINE WRAPPER DESNECESSÁRIO**
+### **#1 - REASONING ENGINE WRAPPER DESNECESSÁRIO**
 **🎯 Impacto**: 375 linhas de código morto, duplicação de funcionalidade, performance degradada
 
 **Problema**: `src/core/reasoning_engine.py` é apenas wrapper que delega TUDO para `ReasoningCoordinator`
@@ -84,7 +48,7 @@ src/services/consultation_service.py:
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#3 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
+### **#2 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
 **🎯 Impacto**: Confusão sobre qual implementação usar, código duplicado, manutenção fragmentada
 
 **Duplicações Identificadas**:
@@ -123,7 +87,7 @@ src/services/consultation_service.py:
 
 ---
 
-### **#4 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
+### **#3 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
 **🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
 **Problemas Estruturais**:
@@ -162,7 +126,7 @@ src/services/consultation_service.py:
 
 ---
 
-### **#5 - ESTRUTURA DE ARQUIVOS CONFUSA**
+### **#4 - ESTRUTURA DE ARQUIVOS CONFUSA**
 **🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
 
 **Problemas de Organização**:
@@ -208,7 +172,7 @@ src/
 
 ## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
 
-### **#6 - TESTES INCONSISTENTES E INSUFICIENTES**
+### **#5 - TESTES INCONSISTENTES E INSUFICIENTES**
 **🎯 Impacto**: Bugs em produção, refatorações arriscadas, baixa confiabilidade
 
 **Problemas Identificados**:
@@ -250,7 +214,7 @@ tests/
 
 ---
 
-### **#7 - PERFORMANCE NÃO OTIMIZADA**
+### **#6 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -291,7 +255,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-### **#8 - CONFIGURAÇÃO AINDA ESPALHADA**
+### **#7 - CONFIGURAÇÃO AINDA ESPALHADA**
 **🎯 Impacto**: Deploy arriscado, configuração inconsistente entre ambientes
 
 **Hardcoded Values Remanescentes**:
@@ -314,7 +278,7 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 
 ## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 
-### **#9 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#8 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -349,14 +313,14 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 ```
 IMPACTO vs COMPLEXIDADE:
 
-Alto Impacto    │ #1 Imports     │ #4 Arquitetura │
-                │ #2 Wrapper     │ #5 Estrutura   │
+Alto Impacto    │ #1 Wrapper     │ #3 Arquitetura │
+                │                │ #4 Estrutura   │
                 │                │                │
                 ├────────────────┼────────────────│
-Médio Impacto   │ #6 Testes      │ #7 Performance │
-                │ #8 Config      │                │
+Médio Impacto   │ #5 Testes      │ #6 Performance │
+                │ #7 Config      │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #9 Docs        │                │
+Baixo Impacto   │ #8 Docs        │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -367,25 +331,24 @@ Baixo Impacto   │ #9 Docs        │                │
 
 ### **🚨 FASE CRÍTICA - Resolver Primeiro**
 ```bash
-# #1 - Imports Obsoletos
-# #2 - Reasoning Wrapper
+# #1 - Reasoning Wrapper
 ```
 **Objetivo**: Sistema funcional e sem confusão sobre qual código usar
 
 ### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
 ```bash
-# #3 - Funcionalidades Duplicadas
-# #4 - Arquitetura Fragmentada
-# #6 - Testes Inconsistentes
+# #2 - Funcionalidades Duplicadas
+# #3 - Arquitetura Fragmentada
+# #5 - Testes Inconsistentes
 ```
 **Objetivo**: Arquitetura limpa e confiável
 
 ### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
 ```bash
-# #5 - Estrutura de Arquivos
-# #7 - Performance
-# #8 - Configuração
-# #9 - Documentação
+# #4 - Estrutura de Arquivos
+# #6 - Performance
+# #7 - Configuração
+# #8 - Documentação
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
@@ -400,9 +363,9 @@ Baixo Impacto   │ #9 Docs        │                │
 4. **Backup de arquivos críticos** - Antes de grandes mudanças
 
 ### **Ordem de Segurança**:
-1. **Mais seguro**: #1, #9 (baixo risco de quebrar)
-2. **Médio risco**: #2, #3, #6, #8 (testar bem)
-3. **Alto risco**: #4, #5, #7 (mudanças estruturais grandes)
+1. **Mais seguro**: #1, #8 (baixo risco de quebrar)
+2. **Médio risco**: #2, #5, #7 (testar bem)
+3. **Alto risco**: #3, #4, #6 (mudanças estruturais grandes)
 
 ### **Validação Necessária**:
 ```bash
@@ -415,6 +378,6 @@ docker-compose exec api python -m pytest tests/ -v
 ---
 
 *Documento criado em: 2025-01-21*  
-*Última atualização: 2025-01-21 - TD2 resolvido*  
+*Última atualização: 2025-01-21 - TD1 e TD2 resolvidos*  
 *Baseado em análise completa do código atual*  
 *Organizado para execução via Cursor/Claude Code*
