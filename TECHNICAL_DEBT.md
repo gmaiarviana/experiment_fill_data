@@ -110,9 +110,36 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-## 🔶 MÉDIO - Melhoria de Qualidade e Performance
+### **#4 - OVERHEAD E COMPLEXIDADE DA SOLUÇÃO HÍBRIDA LLM + CÓDIGO**
+**🎯 Impacto**: Manutenção mais difícil, lógica duplicada, evolução lenta, fragmentação de responsabilidades
 
-### #4 - PERFORMANCE NÃO OTIMIZADA
+**Problema**: O modelo híbrido atual (LLM para extração/conversação + código para validação/regras) gera:
+- Overhead de integração (serialização, orquestração)
+- Duplicidade de lógica (LLM extrai, código valida)
+- Perda de contexto entre mensagens
+- Dificuldade de evoluir prompts e regras de negócio rapidamente
+
+**Root Causes**:
+- Separação artificial entre extração e validação
+- Validações críticas feitas fora do LLM
+- Glue code para manter contexto e consistência
+
+**Ação Sugerida**:
+1. Prototipar endpoint 100% LLM (sem validadores Python)
+2. Rodar testes de jornada e validação
+3. Se qualidade for aceitável, migrar gradualmente para abordagem full LLM
+
+**Observação**: Como projeto pessoal, sem usuários ativos e com apoio de IA (Cursor/Claude), priorizar simplicidade e agilidade pode ser mais vantajoso do que controle rígido.
+
+**Benefícios Esperados**:
+- Menos código para manter
+- Evolução mais rápida
+- Menos fragmentação
+- Menos bugs de contexto
+
+---
+
+### **#5 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -153,9 +180,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-## 🔵 BAIXO - Melhoria de Experiência do Desenvolvedor
-
-### #5 - DOCUMENTAÇÃO INSUFICIENTE
+### **#6 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:

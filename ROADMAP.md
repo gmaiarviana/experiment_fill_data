@@ -108,3 +108,14 @@ Sistema conversacional que transforma conversas naturais em dados estruturados. 
 - API integration framework
 
 ---
+
+## Próximos Passos Estratégicos
+
+### Explorar migração para agente 100% LLM
+- Objetivo: Simplificar arquitetura, reduzir manutenção, acelerar evolução.
+- Passos:
+  1. Prototipar endpoint 100% LLM (sem validadores Python)
+  2. Rodar testes de jornada e validação
+  3. Se qualidade for aceitável, migrar gradualmente
+- Critérios de sucesso: Qualidade de extração aceitável, menos bugs de contexto, evolução mais ágil.
+- Observação: Como projeto pessoal, priorizar simplicidade e automação via IA (Cursor/Claude) é estratégico.
