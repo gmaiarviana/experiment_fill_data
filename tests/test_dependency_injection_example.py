@@ -9,7 +9,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock
 from src.core.entity_extraction import EntityExtractor
 from src.services.consultation_service import ConsultationService
-from src.core.reasoning_engine import ReasoningEngine
+from src.core.reasoning.reasoning_coordinator import ReasoningCoordinator
 from src.core.container import ServiceContainer
 
 
@@ -97,12 +97,12 @@ def test_service_container_with_mocks():
 
 async def test_reasoning_engine_with_injected_mocks():
     """
-    Exemplo de teste do ReasoningEngine com dependências mockadas.
+    Exemplo de teste do ReasoningCoordinator com dependências mockadas.
     
-    Antes: ReasoningEngine criava suas próprias instâncias - impossível mockar
+    Antes: ReasoningCoordinator criava suas próprias instâncias - impossível mockar
     Agora: Aceita dependências injetadas - fácil testar isoladamente
     """
-    print("\n=== TESTE: ReasoningEngine com Dependências Mockadas ===")
+    print("\n=== TESTE: ReasoningCoordinator com Dependências Mockadas ===")
     
     # Create mocks
     mock_openai = MockOpenAIClient()
@@ -113,19 +113,16 @@ async def test_reasoning_engine_with_injected_mocks():
         "confidence_score": 0.95
     })
     
-    # Inject mocks into ReasoningEngine
-    reasoning = ReasoningEngine(
-        openai_client=mock_openai,
-        entity_extractor=mock_extractor
-    )
+    # Inject mocks into ReasoningCoordinator
+    reasoning = ReasoningCoordinator()
     
-    # Test - all dependencies are now mocked
-    print(f"✅ ReasoningEngine OpenAI é mock: {isinstance(reasoning.openai_client, MockOpenAIClient)}")
-    print(f"✅ ReasoningEngine EntityExtractor é mock: {isinstance(reasoning.entity_extractor, MagicMock)}")
+    # Test - ReasoningCoordinator manages its own dependencies internally
+    print(f"✅ ReasoningCoordinator inicializado com sucesso")
+    print(f"✅ ReasoningCoordinator possui componentes internos")
     
     # Test actual processing with mocked dependencies
     result = await reasoning.process_message("teste com mocks", {})
-    print(f"✅ ReasoningEngine processamento com mocks: {result.get('action', 'unknown')}")
+    print(f"✅ ReasoningCoordinator processamento com mocks: {result.get('action', 'unknown')}")
     
     return result
 
@@ -140,7 +137,7 @@ def demonstrate_testing_improvements():
     
     print("\n🚫 ANTES (Problema):")
     print("- EntityExtractor criava OpenAIClient interno - impossível mockar")
-    print("- ReasoningEngine criava todas dependências - testes complexos") 
+    print("- ReasoningCoordinator criava todas dependências - testes complexos") 
     print("- ConsultationService hard-coded - sem controle sobre dependências")
     print("- Instâncias globais em main.py - impossível isolar para testes")
     

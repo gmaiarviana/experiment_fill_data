@@ -48,9 +48,9 @@ from src.core.container import (
     ServiceContainer, 
     get_openai_client, 
     get_entity_extractor, 
-    get_reasoning_engine, 
     get_consultation_service
 )
+from src.core.reasoning.reasoning_coordinator import ReasoningCoordinator
 
 # Initialize service container
 try:
@@ -110,8 +110,8 @@ async def root():
 
 @app.post("/chat/message")
 async def chat_message(request: Request) -> ChatResponse:
-    """Chat message endpoint with ReasoningEngine integration and session management"""
-    logger.info("=== INÍCIO: Endpoint /chat/message com ReasoningEngine ===")
+    """Chat message endpoint with ReasoningCoordinator integration and session management"""
+    logger.info("=== INÍCIO: Endpoint /chat/message com ReasoningCoordinator ===")
     
     try:
         # Log request details
@@ -177,8 +177,8 @@ async def chat_message(request: Request) -> ChatResponse:
         if len(sessions) % 10 == 0:  # Every 10 requests
             cleanup_old_sessions()
         
-        # Process message with ReasoningEngine
-        reasoning_engine = get_reasoning_engine()
+        # Process message with ReasoningCoordinator
+        reasoning_engine = ReasoningCoordinator()
         if reasoning_engine is None:
             logger.warning("Reasoning Engine não disponível, usando fallback OpenAI")
             openai_client = get_openai_client()
@@ -197,12 +197,12 @@ async def chat_message(request: Request) -> ChatResponse:
                 timestamp=datetime.utcnow()
             )
         else:
-            # Use ReasoningEngine
-            logger.info(f"Processando mensagem com ReasoningEngine: '{chat_request.message[:50]}...'")
+            # Use ReasoningCoordinator
+            logger.info(f"Processando mensagem com ReasoningCoordinator: '{chat_request.message[:50]}...'")
             
             try:
                 result = await reasoning_engine.process_message(chat_request.message, context)
-                logger.info("ReasoningEngine processamento concluído com sucesso")
+                logger.info("ReasoningCoordinator processamento concluído com sucesso")
                 
                 # Update session context
                 sessions[session_id] = context
@@ -218,7 +218,7 @@ async def chat_message(request: Request) -> ChatResponse:
                 extracted_data = extracted_data_raw.copy()  # Use data as-is
                 
                 # Log reasoning results
-                logger.info(f"ReasoningEngine resultado - Ação: {action}, Confidence: {confidence:.2f}")
+                logger.info(f"ReasoningCoordinator resultado - Ação: {action}, Confidence: {confidence:.2f}")
                 if extracted_data:
                     logger.info(f"Dados extraídos: {list(extracted_data.keys())}")
                 
@@ -267,7 +267,7 @@ async def chat_message(request: Request) -> ChatResponse:
                         logger.error(f"Erro durante persistência: {str(e)}")
                         response_text += f"\n\n⚠️ Erro ao salvar consulta: {str(e)}"
                 
-                # Create enhanced response with ReasoningEngine data and persistence info
+                # Create enhanced response with ReasoningCoordinator data and persistence info
                 response = ChatResponse(
                     response=response_text,
                     session_id=session_id,
@@ -284,11 +284,11 @@ async def chat_message(request: Request) -> ChatResponse:
                 logger.info(f"Reasoning data - Action: {action}, Confidence: {confidence}, Data: {extracted_data}, Persistence: {persistence_status}, Consultation ID: {consultation_id}")
                 
             except Exception as e:
-                logger.error(f"Erro no ReasoningEngine: {str(e)}")
-                # Fallback to OpenAI if ReasoningEngine fails
+                logger.error(f"Erro no ReasoningCoordinator: {str(e)}")
+                # Fallback to OpenAI if ReasoningCoordinator fails
                 openai_client = get_openai_client()
                 if openai_client is not None:
-                    logger.info("Usando fallback OpenAI devido a erro no ReasoningEngine")
+                    logger.info("Usando fallback OpenAI devido a erro no ReasoningCoordinator")
                     ai_response = await openai_client.chat_completion(chat_request.message)
                     response = ChatResponse(
                         response=ai_response,
@@ -532,8 +532,8 @@ async def get_session_info(session_id: str):
         
         context = sessions[session_id]
         
-        # Get session summary using ReasoningEngine
-        reasoning_engine = get_reasoning_engine()
+        # Get session summary using ReasoningCoordinator
+        reasoning_engine = ReasoningCoordinator()
         if reasoning_engine:
             summary = reasoning_engine.get_context_summary(context)
         else:

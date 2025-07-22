@@ -8,41 +8,8 @@ Documento catalogando débito técnico pendente. Organizado por **prioridade de 
 
 ## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
 
-### **#1 - REASONING ENGINE WRAPPER DESNECESSÁRIO**
-**🎯 Impacto**: 375 linhas de código morto, duplicação de funcionalidade, performance degradada
 
-**Problema**: `src/core/reasoning_engine.py` é apenas wrapper que delega TUDO para `ReasoningCoordinator`
-
-**Análise**:
-- 90+ métodos legados que só fazem: `return self.coordinator.method()`
-- Toda lógica real está em `src/core/reasoning/reasoning_coordinator.py`
-- Mantido "para compatibilidade" mas é código morto
-
-**Ação Necessária**:
-```python
-# ❌ REMOVER COMPLETAMENTE:
-src/core/reasoning_engine.py
-
-# ✅ ATUALIZAR imports diretos em:
-src/api/main.py:
-# DE: from src.core.reasoning_engine import ReasoningEngine
-# PARA: from src.core.reasoning import ReasoningCoordinator
-
-src/core/container.py:
-# Atualizar get_reasoning_engine() para get_reasoning_coordinator()
-
-src/services/consultation_service.py:
-# Se usar ReasoningEngine, trocar por ReasoningCoordinator
-```
-
-**Benefícios**:
-- Elimina 375 linhas de delegação desnecessária
-- Remove camada extra de abstração
-- Melhora performance e clareza do código
-
----
-
-### **#2 - CONTEXT MANAGEMENT QUEBRADO EM CONVERSAS SEQUENCIAIS**
+### **#1 - CONTEXT MANAGEMENT QUEBRADO EM CONVERSAS SEQUENCIAIS**
 **🎯 Impacto**: Dados extraídos perdidos entre mensagens, persistence inconsistente, UX degradada
 
 **Problema**: Sistema não mantém contexto entre mensagens da mesma sessão
@@ -76,7 +43,7 @@ consulta_data = {
 
 ---
 
-### **#3 - REASONING INTELLIGENCE LIMITADO**
+### **#2 - REASONING INTELLIGENCE LIMITADO**
 **🎯 Impacto**: Sistema não entende correções, reagendamentos, ou context natural
 
 **Problema**: LLM Strategist reconhece apenas "extract" e "ask", não operations complexas
@@ -104,7 +71,7 @@ system_prompt = """- "extract": Extrair dados
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#4 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
+### **#3 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
 **🎯 Impacto**: Confusão sobre qual implementação usar, código duplicado, manutenção fragmentada
 
 **Duplicações Identificadas**:
@@ -113,21 +80,21 @@ system_prompt = """- "extract": Extrair dados
 ```python
 # src/core/question_generator.py: QuestionGenerator class
 # src/core/reasoning/response_composer.py: Templates similares
-# src/core/reasoning_engine.py: _get_response_template() [será removido em #1]
+# ✅ REMOVIDO: src/core/reasoning_engine.py já foi removido
 ```
 
 #### **Data Summarization (3 implementações)**:
 ```python
 # src/core/data_summarizer.py: DataSummarizer class  
 # src/core/reasoning/conversation_flow.py: _summarize_extracted_data()
-# src/core/reasoning_engine.py: _summarize_extracted_data() [será removido em #1]
+# ✅ REMOVIDO: src/core/reasoning_engine.py já foi removido
 ```
 
 #### **Context Management (3 implementações)**:
 ```python
 # src/core/conversation_manager.py: ConversationManager
 # src/core/reasoning/conversation_flow.py: context management methods
-# src/core/reasoning_engine.py: delegation methods [será removido em #1]
+# ✅ REMOVIDO: src/core/reasoning_engine.py já foi removido
 ```
 
 **Estratégia de Consolidação**:
@@ -143,7 +110,7 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#5 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
+### **#4 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
 **🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
 **Problemas Estruturais**:
@@ -182,7 +149,7 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#6 - ESTRUTURA DE ARQUIVOS CONFUSA**
+### **#5 - ESTRUTURA DE ARQUIVOS CONFUSA**
 **🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
 
 **Problemas de Organização**:
@@ -228,7 +195,7 @@ src/
 
 ## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
 
-### **#8 - PERFORMANCE NÃO OTIMIZADA**
+### **#6 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -269,30 +236,10 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-### **#9 - CONFIGURAÇÃO AINDA ESPALHADA**
-**🎯 Impacto**: Deploy arriscado, configuração inconsistente entre ambientes
-
-**Hardcoded Values Remanescentes**:
-```python
-# src/main.py line 128:
-url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
-
-# Várias configurações ainda não centralizadas:
-# - Timeouts específicos
-# - URLs de serviços externos
-# - Limites de recursos
-```
-
-**Centralização Necessária**:
-- Mover todos os hardcoded values para `settings.py`
-- Criar configurações específicas por ambiente
-- Validação automática de configurações críticas
-
----
 
 ## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 
-### **#10 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#7 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -327,15 +274,15 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 ```
 IMPACTO vs COMPLEXIDADE:
 
-Alto Impacto    │ #1 Wrapper     │ #2 Context     │
-                │                │ #3 Intelligence│
-                │                │ #5 Arquitetura │
+Alto Impacto    │                │ #1 Context     │
+                │                │ #2 Intelligence│
+                │                │ #4 Arquitetura │
                 ├────────────────┼────────────────│
-Médio Impacto   │ #4 Duplicadas  │ #6 Estrutura   │
-                │                │ #8 Performance │
-                │ #9 Config      │                │
+Médio Impacto   │ #3 Duplicadas  │ #5 Estrutura   │
+                │                │ #6 Performance │
+                │                │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #10 Docs       │                │
+Baixo Impacto   │ #7 Docs        │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -346,25 +293,23 @@ Baixo Impacto   │ #10 Docs       │                │
 
 ### **🚨 FASE CRÍTICA - Resolver Primeiro**
 ```bash
-# #1 - Reasoning Wrapper
-# #2 - Context Management
-# #3 - Reasoning Intelligence
+# #1 - Context Management
+# #2 - Reasoning Intelligence
 ```
-**Objetivo**: Sistema funcional e sem confusão sobre qual código usar
+**Objetivo**: Sistema funcional para conversas sequenciais
 
 ### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
 ```bash
-# #4 - Funcionalidades Duplicadas
-# #5 - Arquitetura Fragmentada
+# #3 - Funcionalidades Duplicadas
+# #4 - Arquitetura Fragmentada
 ```
 **Objetivo**: Arquitetura limpa e confiável
 
 ### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
 ```bash
-# #6 - Estrutura de Arquivos
-# #8 - Performance
-# #9 - Configuração
-# #10 - Documentação
+# #5 - Estrutura de Arquivos
+# #6 - Performance
+# #7 - Documentação
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
@@ -379,9 +324,9 @@ Baixo Impacto   │ #10 Docs       │                │
 4. **Backup de arquivos críticos** - Antes de grandes mudanças
 
 ### **Ordem de Segurança**:
-1. **Mais seguro**: #1, #10 (baixo risco de quebrar)
-2. **Médio risco**: #4, #9 (testar bem)
-3. **Alto risco**: #2, #3, #5, #6, #8 (mudanças estruturais grandes)
+1. **Mais seguro**: #7 (baixo risco de quebrar)
+2. **Médio risco**: #3 (testar bem)
+3. **Alto risco**: #1, #2, #4, #5, #6 (mudanças estruturais grandes)
 
 ### **Validação Necessária**:
 ```bash

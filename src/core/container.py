@@ -10,7 +10,7 @@ from typing import Dict, Any, Optional, TypeVar, Type
 import threading
 from src.core.openai_client import OpenAIClient
 from src.core.entity_extraction import EntityExtractor
-from src.core.reasoning_engine import ReasoningEngine
+from src.core.reasoning.reasoning_coordinator import ReasoningCoordinator
 from src.services.consultation_service import ConsultationService
 
 T = TypeVar('T')
@@ -50,7 +50,7 @@ class ServiceContainer:
         Services are initialized in dependency order:
         1. OpenAIClient (no dependencies)
         2. EntityExtractor (depends on OpenAIClient)
-        3. ReasoningEngine (depends on EntityExtractor, OpenAIClient)
+        3. ReasoningCoordinator (no external dependencies)
         4. ConsultationService (depends on EntityExtractor)
         """
         if 'openai_client' not in self._services:
@@ -61,14 +61,9 @@ class ServiceContainer:
             openai_client = self._services['openai_client']
             self._services['entity_extractor'] = EntityExtractor(openai_client=openai_client)
         
-        if 'reasoning_engine' not in self._services:
-            # Inject shared dependencies to avoid duplication
-            openai_client = self._services['openai_client']
-            entity_extractor = self._services['entity_extractor']
-            self._services['reasoning_engine'] = ReasoningEngine(
-                openai_client=openai_client,
-                entity_extractor=entity_extractor
-            )
+        if 'reasoning_coordinator' not in self._services:
+            # ReasoningCoordinator doesn't need external dependencies
+            self._services['reasoning_coordinator'] = ReasoningCoordinator()
         
         if 'consultation_service' not in self._services:
             # Inject shared EntityExtractor to avoid duplication
@@ -145,10 +140,10 @@ def get_entity_extractor() -> EntityExtractor:
     return container.get_service('entity_extractor')
 
 
-def get_reasoning_engine() -> ReasoningEngine:
-    """Get the singleton ReasoningEngine instance."""
+def get_reasoning_coordinator() -> ReasoningCoordinator:
+    """Get the singleton ReasoningCoordinator instance."""
     container = ServiceContainer()
-    return container.get_service('reasoning_engine')
+    return container.get_service('reasoning_coordinator')
 
 
 def get_consultation_service() -> ConsultationService:

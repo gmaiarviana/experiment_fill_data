@@ -13,7 +13,7 @@ from .core.config import get_settings
 from .core.logging.logger_factory import get_logger
 from .core.entity_extraction import EntityExtractor
 from .core.validation.normalizers.data_normalizer import DataNormalizer
-from .core.reasoning_engine import ReasoningEngine
+from .core.reasoning.reasoning_coordinator import ReasoningCoordinator
 from .core.database import create_tables, test_connection, get_engine
 from .services.consultation_service import ConsultationService
 from sqlalchemy import text
@@ -74,7 +74,7 @@ def test_validation(data_json: str) -> None:
 def test_reasoning(text: str) -> None:
     """Test reasoning engine with partial information."""
     try:
-        reasoning_engine = ReasoningEngine()
+        reasoning_engine = ReasoningCoordinator()
         result = reasoning_engine.process_message(text)
         
         print("=== Reasoning Engine Test ===")
