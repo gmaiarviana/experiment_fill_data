@@ -1,9 +1,11 @@
 from typing import Dict, Any, Optional, List
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
 from src.core.openai_client import OpenAIClient
-from src.core.data_normalizer import normalize_consulta_data
-from src.core.validators import parse_relative_time, parse_relative_date
+from src.core.validation.normalizers.data_normalizer import DataNormalizer
+from src.core.validation.validators.date_validator import DateValidator
 import re
+
+logger = get_logger(__name__)
 
 
 class EntityExtractor:
@@ -20,6 +22,8 @@ class EntityExtractor:
                           Se None, cria uma nova instância.
         """
         self.openai_client = openai_client or OpenAIClient()
+        self.data_normalizer = DataNormalizer(strict_mode=False)
+        self.date_validator = DateValidator()
         self.consulta_schema = {
             "name": "extract_consulta_info",
             "description": "Extrai informações de agendamento de consulta médica",
@@ -85,22 +89,31 @@ class EntityExtractor:
             
             # Aplica normalização aos dados processados
             try:
-                normalization_result = normalize_consulta_data(processed_data)
+                normalization_result = self.data_normalizer.normalize_consultation_data(processed_data)
                 
                 # Usa dados normalizados e confidence score do normalizador
-                result["extracted_data"] = normalization_result["normalized_data"]
+                result["extracted_data"] = normalization_result.normalized_data
                 result["confidence_score"] = self._calculate_improved_confidence(
-                    normalization_result["normalized_data"],
-                    normalization_result["validation_errors"],
+                    normalization_result.normalized_data,
+                    normalization_result.validation_summary.field_results,
                     context,
                     message
                 )
                 result["normalization_applied"] = True
+                result["normalization_confidence"] = normalization_result.confidence_score
                 
                 # Adiciona informações de validação se houver erros
-                if normalization_result["validation_errors"]:
-                    result["validation_errors"] = normalization_result["validation_errors"]
-                    logger.warning(f"Erros de validação na normalização: {normalization_result['validation_errors']}")
+                if normalization_result.validation_summary.total_errors > 0:
+                    validation_errors = []
+                    for field_name, field_result in normalization_result.validation_summary.field_results.items():
+                        if not field_result.is_valid:
+                            validation_errors.extend(field_result.errors)
+                    result["validation_errors"] = validation_errors
+                    logger.warning(f"Erros de validação na normalização: {validation_errors}")
+                
+                # Adiciona recomendações de melhoria
+                if normalization_result.recommendations:
+                    result["recommendations"] = normalization_result.recommendations
                 
                 logger.info(f"Normalização aplicada com sucesso. Confidence score: {result['confidence_score']:.2f}")
                 
@@ -380,17 +393,18 @@ class EntityExtractor:
         
         # Processa campo de data se necessário
         if temporal_info["has_date_expression"]:
-            date_result = parse_relative_date(temporal_info["date_expression"])
-            if date_result["valid"]:
-                processed_data["data"] = date_result["iso_date"]
-                logger.info(f"Data processada: {temporal_info['date_expression']} -> {date_result['iso_date']}")
+            date_result = self.date_validator.validate(temporal_info["date_expression"])
+            if date_result.is_valid:
+                processed_data["data"] = date_result.value
+                logger.info(f"Data processada: {temporal_info['date_expression']} -> {date_result.value}")
         
         # Processa campo de horário se necessário
         if temporal_info["has_time_expression"]:
-            time_result = parse_relative_time(temporal_info["time_expression"])
-            if time_result["valid"]:
-                processed_data["horario"] = time_result["time"]
-                logger.info(f"Horário processado: {temporal_info['time_expression']} -> {time_result['time']}")
+            # Para horários, ainda podemos usar o date_validator ou criar um time_validator específico
+            time_result = self.date_validator.validate(temporal_info["time_expression"])
+            if time_result.is_valid:
+                processed_data["horario"] = time_result.value
+                logger.info(f"Horário processado: {temporal_info['time_expression']} -> {time_result.value}")
         
         # Processa expressões combinadas
         for combined_expr in temporal_info["combined_expressions"]:
