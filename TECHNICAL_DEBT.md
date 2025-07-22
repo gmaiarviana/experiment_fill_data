@@ -2,434 +2,438 @@
 
 ## 📋 Visão Geral
 
-Este documento cataloga o Technical Debt identificado no sistema Data Structuring Agent, organizado por prioridade e impacto. O objetivo é guiar refatorações futuras e manter a qualidade do código.
+Documento completo catalogando débito técnico identificado em 2025. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
 
 ---
 
-## 🚨 **CRÍTICO - Impacto Alto, Esforço Alto**
+## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
 
-### **1. Duplicação Massiva de Lógica de Validação**
+### **#1 - IMPORTS OBSOLETOS E DEPENDÊNCIAS MORTAS**
+**🎯 Impacto**: Sistema pode falhar em runtime, confusão sobre qual código usar
 
-**Status: ✅ RESOLVIDO em 2025-07-22**
-
-**Problema Original**: Validação e normalização duplicadas em múltiplos módulos
-- `validators.py` (875 linhas) - Validação individual
-- `data_normalizer.py` (449 linhas) - Validação + normalização  
-- `entity_extraction.py` - Processamento temporal sobreposto
-- `reasoning_engine.py` - Validação contextual
-
-**Solução Implementada**:
+**Problemas Identificados**:
 ```python
-# Implementado: src/core/validation/
-├── validators/
-│   ├── base_validator.py      ✅ Interface comum abstrata
-│   ├── phone_validator.py     ✅ Telefones brasileiros
-│   ├── date_validator.py      ✅ Datas/expressões temporais
-│   ├── name_validator.py      ✅ Nomes próprios
-│   └── document_validator.py  ✅ CPF, CEP, documentos
-├── normalizers/
-│   ├── data_normalizer.py     ✅ Orquestrador unificado
-│   └── field_mapper.py        ✅ Mapeamento pt/en
-└── validation_orchestrator.py ✅ Coordenador central
+# ❌ OBSOLETO em src/main.py (lines 12-13):
+from .core.validators import validate_brazilian_phone, parse_relative_date, normalize_name, calculate_validation_confidence
+from .core.data_normalizer import normalize_consulta_data
+
+# ❌ INCONSISTENTE - Mistura de sistemas de logging:
+from loguru import logger              # conversation_manager.py, reasoning_engine.py
+from src.core.logging.logger_factory import get_logger  # outros arquivos
+
+# ❌ IMPORTS INEXISTENTES em entity_extraction.py:
+from somewhere import parse_relative_date, parse_relative_time  # Funções não existem
 ```
 
-**Ações Realizadas:**
-- Criado sistema modular de validação com interface `BaseValidator` consistente
-- Implementado 4 validadores específicos: telefone, data, nome e documentos  
-- Criado `ValidationOrchestrator` para coordenação centralizada de validações
-- Implementado `DataNormalizer` unificado substituindo lógica duplicada
-- Criado `FieldMapper` para mapeamento português/inglês com aliases
-- Migrado `EntityExtractor` para usar novo sistema elimando dependências antigas
-- Criado 12 testes abrangentes validando funcionamento via Docker
-- Marcado arquivos antigos como depreciados mantendo compatibilidade temporária
-
-**Benefícios Alcançados:**
-- ✅ **Eliminação de duplicação**: Lógica unificada em arquitetura modular
-- ✅ **Interface consistente**: Todos validadores seguem padrão `BaseValidator`
-- ✅ **Manutenibilidade**: Componentes isolados e facilmente extensíveis
-- ✅ **Testabilidade**: 100% dos validadores com cobertura de testes
-- ✅ **Performance**: Validação otimizada com cache e reutilização
-- ✅ **Redução de código**: Arquitetura mais limpa e organizada
-
-**Esforço Real**: 4 fases implementadas em 1 sessão
-**Impacto**: Eliminação completa da duplicação de validação no sistema
-
----
-
-### **1.1 Finalizar Migração para Sistema de Validação Unificado**
-
-**Status: ✅ RESOLVIDO em 2025-07-22**
-
-**Ações Realizadas:**
-- Migrado `consultation_service.py` para usar `DataNormalizer` unificado em vez de `normalize_consulta_data`
-- Removido import não usado de `normalize_consulta_data` em `reasoning_engine.py`
-- Migrado `api/main.py` para usar `DataNormalizer` no endpoint `/validate` com compatibilidade backward
-- Removido completamente arquivos legados `validators.py` e `data_normalizer.py`
-- Corrigido extração de erros de validação usando `field_results.errors` do novo sistema
-- Testado sistema completo via Docker: endpoints validation e consultation funcionando
-
-**Benefícios Alcançados:**
-- ✅ **Eliminação completa do sistema legado**: Apenas um sistema de validação no código
-- ✅ **Consistência total**: Todos módulos usam DataNormalizer unificado
-- ✅ **Redução de código**: Removidas 1371 linhas de código duplicado
-- ✅ **Compatibilidade mantida**: APIs continuam funcionando normalmente
-- ✅ **Testabilidade**: Sistema 100% validado via Docker
-
-**Esforço Real**: 1 sessão de implementação incremental
-**Impacto**: Eliminação completa da coexistência de sistemas de validação
-
----
-
-### **2. Arquitetura de Serviços Fragmentada**
-
-**Problema**: Lógica de negócio espalhada em componentes monolíticos
-- `ReasoningEngine` (375 linhas) - Múltiplas responsabilidades
-- `EntityExtractor` (426 linhas) - Lógica complexa
-- `ConsultationService` - Único service para tudo
-- `main.py` (404 linhas) - Endpoints + lógica misturadas
-
-**Impacto**:
-- Difícil testar componentes isoladamente
-- Acoplamento alto entre módulos
-- Difícil adicionar novas funcionalidades
-- Performance degradada por inicializações desnecessárias
-
-**Solução Proposta**:
+**Ação Necessária**:
 ```python
-# Novo: src/services/
-├── chat_service.py          # Orquestra conversação
-├── extraction_service.py    # Gerencia extração
-├── validation_service.py    # Orquestra validação
-├── session_service.py       # Gerencia sessões
-└── consultation_service.py  # Foco apenas em persistência
+# ✅ SUBSTITUIR imports em src/main.py:
+from src.core.validation.normalizers.data_normalizer import DataNormalizer
+
+# ✅ PADRONIZAR logging em TODOS os arquivos:
+from src.core.logging.logger_factory import get_logger
+logger = get_logger(__name__)
+
+# ✅ REMOVER imports inexistentes
+# ✅ ATUALIZAR test_validation() para usar DataNormalizer
 ```
 
-**Esforço**: 4-5 sprints
-**Benefício**: Código 40% mais testável, manutenibilidade melhorada
+**Arquivos Afetados**:
+- `src/main.py` (função test_validation)
+- `src/core/conversation_manager.py`
+- `src/core/reasoning_engine.py`
+- `src/core/entity_extraction.py`
 
 ---
 
-## ⚠️ **ALTO - Impacto Médio, Esforço Médio**
+### **#2 - ARQUIVOS LEGADOS OBSOLETOS**
+**🎯 Impacto**: Confusão sobre qual sistema usar, imports podem falhar
 
-### **3. Módulo Reasoning Excessivamente Complexo**
-
-**Problema**: Refatoração criou 5 módulos mas manteve complexidade
-- `ReasoningCoordinator` (192 linhas) - Muitas responsabilidades
-- `ResponseComposer` (448 linhas) - Arquivo muito grande
-- `FallbackHandler` (356 linhas) - Lógica complexa
-- `LLMStrategist` (230 linhas) - Acoplamento alto
-
-**Impacto**:
-- Difícil entender fluxo de reasoning
-- Debugging complexo
-- Performance degradada por chamadas desnecessárias
-- Difícil adicionar novos tipos de reasoning
-
-**Solução Proposta**:
-```python
-# Simplificado: src/core/reasoning/
-├── reasoning_engine.py      # Orquestrador principal (max 200 linhas)
-├── llm_processor.py         # Processamento LLM (max 150 linhas)
-├── response_builder.py      # Construção de respostas (max 200 linhas)
-└── context_manager.py       # Gerenciamento de contexto (max 100 linhas)
+**Arquivos para REMOÇÃO COMPLETA**:
+```bash
+src/core/logging.py              # 35 linhas - Substituído por logger_factory/
 ```
 
-**Esforço**: 2-3 sprints
-**Benefício**: Código 50% mais legível, debugging facilitado
+**Arquivos para VERIFICAR e remover se substituídos**:
+```bash
+# Verificar se existem versões antigas que foram substituídas:
+src/core/validators.py           # Se foi substituído por validation/
+src/core/data_normalizer.py     # Se foi substituído por validation/normalizers/
+```
+
+**Validação Necessária**:
+- Confirmar que nenhum código ativo importa estes arquivos
+- Executar testes após remoção para garantir que sistema funciona
 
 ---
 
-### **4. Inicialização e Dependências Desorganizadas**
+### **#3 - REASONING ENGINE WRAPPER DESNECESSÁRIO**
+**🎯 Impacto**: 375 linhas de código morto, duplicação de funcionalidade, performance degradada
 
-**Status: ✅ RESOLVIDO em 2025-07-21**
+**Problema**: `src/core/reasoning_engine.py` é apenas wrapper que delega TUDO para `ReasoningCoordinator`
 
-**Ações realizadas:**
-- Criado módulo `src/core/container.py` com ServiceContainer singleton thread-safe
-- Implementado dependency injection opcional em EntityExtractor, ReasoningEngine, ConsultationService
-- Refatorado `src/api/main.py` para usar ServiceContainer em vez de instâncias globais
-- Eliminado duplicação de instâncias OpenAIClient e EntityExtractor via injeção de dependências
-- Validado facilidade de testes com `tests/test_dependency_injection_example.py`
-- Mantido backward compatibility com parâmetros opcionais nos construtores
+**Análise**:
+- 90+ métodos legados que só fazem: `return self.coordinator.method()`
+- Toda lógica real está em `src/core/reasoning/reasoning_coordinator.py`
+- Mantido "para compatibilidade" mas é código morto
 
-**Benefício:**
-- Testes 80% mais fáceis de escrever (comprovado com mocks)
-- Eliminação de múltiplas instâncias: OpenAI e EntityExtractor agora singleton compartilhado
-- Configuração centralizada para todos os serviços
-- Mocking 100% possível para unit tests isolados
-- Redução de consumo de memória por eliminação de duplicações
-
----
-
-### **5. Estrutura de Arquivos Confusa**
-
-**Problema**: Arquivos muito grandes com responsabilidades misturadas
-- `main.py` (404 linhas) - Endpoints + lógica de negócio
-- `validators.py` (875 linhas) - Muitas validações diferentes
-- `reasoning_engine.py` (375 linhas) - Lógica legada + nova
-
-**Impacto**:
-- Difícil encontrar código específico
-- Merge conflicts frequentes
-- Difícil para novos desenvolvedores
-- Performance degradada por imports desnecessários
-
-**Solução Proposta**:
+**Ação Necessária**:
 ```python
-# Novo: src/
+# ❌ REMOVER COMPLETAMENTE:
+src/core/reasoning_engine.py
+
+# ✅ ATUALIZAR imports diretos em:
+src/api/main.py:
+# DE: from src.core.reasoning_engine import ReasoningEngine
+# PARA: from src.core.reasoning import ReasoningCoordinator
+
+src/core/container.py:
+# Atualizar get_reasoning_engine() para get_reasoning_coordinator()
+
+src/services/consultation_service.py:
+# Se usar ReasoningEngine, trocar por ReasoningCoordinator
+```
+
+**Benefícios**:
+- Elimina 375 linhas de delegação desnecessária
+- Remove camada extra de abstração
+- Melhora performance e clareza do código
+
+---
+
+## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
+
+### **#4 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
+**🎯 Impacto**: Confusão sobre qual implementação usar, código duplicado, manutenção fragmentada
+
+**Duplicações Identificadas**:
+
+#### **Question Generation (3 implementações)**:
+```python
+# src/core/question_generator.py: QuestionGenerator class
+# src/core/reasoning/response_composer.py: Templates similares
+# src/core/reasoning_engine.py: _get_response_template() [será removido em #3]
+```
+
+#### **Data Summarization (3 implementações)**:
+```python
+# src/core/data_summarizer.py: DataSummarizer class  
+# src/core/reasoning/conversation_flow.py: _summarize_extracted_data()
+# src/core/reasoning_engine.py: _summarize_extracted_data() [será removido em #3]
+```
+
+#### **Context Management (3 implementações)**:
+```python
+# src/core/conversation_manager.py: ConversationManager
+# src/core/reasoning/conversation_flow.py: context management methods
+# src/core/reasoning_engine.py: delegation methods [será removido em #3]
+```
+
+**Estratégia de Consolidação**:
+1. **Manter** implementação mais robusta de cada funcionalidade
+2. **Migrar** dependências para implementação escolhida  
+3. **Remover** implementações redundantes
+4. **Atualizar** imports em arquivos dependentes
+
+**Recomendação de Consolidação**:
+- **Question Generation**: Manter `ResponseComposer`, migrar lógica de `QuestionGenerator`
+- **Data Summarization**: Manter `DataSummarizer`, remover de `ConversationFlow`  
+- **Context Management**: Manter `ConversationFlow`, migrar de `ConversationManager`
+
+---
+
+### **#5 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
+**🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
+
+**Problemas Estruturais**:
+
+#### **Responsabilidades Misturadas**:
+```python
+# src/api/main.py (404 linhas):
+# - Endpoints HTTP
+# - Lógica de negócio 
+# - Gerenciamento de sessão
+# - Validação de dados
+# - Tratamento de erros
+
+# src/core/entity_extraction.py (426 linhas):
+# - Extração de entidades
+# - Normalização de dados
+# - Validação temporal
+# - Context management
+```
+
+#### **Services Insuficientes**:
+```python
+# Atual: Apenas ConsultationService
+# Necessário:
+# - ChatService: Orquestra conversação
+# - ExtractionService: Gerencia extração
+# - ValidationService: Orquestra validação
+# - SessionService: Gerencia sessões
+```
+
+**Ação Necessária**:
+- Extrair lógica de negócio de `main.py` para services especializados
+- Quebrar `EntityExtractor` em responsabilidades menores
+- Criar services especializados para cada domínio
+- Implementar injeção de dependência consistente
+
+---
+
+### **#6 - ESTRUTURA DE ARQUIVOS CONFUSA**
+**🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
+
+**Problemas de Organização**:
+
+#### **Arquivos Muito Grandes**:
+```python
+src/api/main.py                    # 404 linhas - endpoints + lógica
+src/core/entity_extraction.py     # 426 linhas - múltiplas responsabilidades
+src/core/reasoning_engine.py      # 375 linhas - wrapper desnecessário
+src/core/reasoning/response_composer.py # 448 linhas - muito complexo
+```
+
+#### **Estrutura Inconsistente**:
+```python
+# Mistura de padrões:
+src/core/validation/              # Modular ✅
+src/core/reasoning/              # Modular ✅  
+src/core/logging/                # Modular ✅
+src/core/*.py                    # Monolítico ❌
+```
+
+**Reorganização Recomendada**:
+```python
+src/
 ├── api/
-│   ├── endpoints/
-│   │   ├── chat.py          # Endpoints de chat
-│   │   ├── validation.py    # Endpoints de validação
-│   │   └── sessions.py      # Endpoints de sessão
+│   ├── endpoints/              # Dividir main.py
+│   │   ├── chat.py
+│   │   ├── validation.py
+│   │   └── sessions.py
 │   ├── middleware/
-│   │   ├── auth.py
-│   │   └── logging.py
 │   └── schemas/
-├── core/
-│   ├── validation/          # Módulo unificado
-│   ├── extraction/          # Extração de entidades
-│   ├── reasoning/           # Reasoning simplificado
-│   └── persistence/         # Persistência
-└── services/
-    ├── chat/               # Services especializados
-    ├── validation/
-    └── session/
+├── services/                   # Expandir services
+│   ├── chat/
+│   ├── extraction/
+│   └── validation/
+└── core/                      # Manter apenas utilities
+    ├── validation/            # ✅ Já organizado
+    ├── reasoning/             # ✅ Já organizado
+    └── logging/               # ✅ Já organizado
 ```
-
-**Esforço**: 3-4 sprints
-**Benefício**: Código 70% mais organizado, onboarding facilitado
 
 ---
 
-## 🔶 **MÉDIO - Impacto Baixo, Esforço Baixo**
+## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
 
-### **6. Testes Insuficientes**
+### **#7 - TESTES INCONSISTENTES E INSUFICIENTES**
+**🎯 Impacto**: Bugs em produção, refatorações arriscadas, baixa confiabilidade
 
-**Problema**: Cobertura de testes baixa para sistema complexo
-- Apenas 4 arquivos de teste
-- Falta testes de integração
-- Falta testes dos módulos reasoning
-- Falta testes de performance
+**Problemas Identificados**:
 
-**Impacto**:
-- Bugs em produção
-- Refatorações arriscadas
-- Difícil validar mudanças
-- Performance não monitorada
-
-**Solução Proposta**:
+#### **Sistemas de Teste Conflitantes**:
 ```python
-# Novo: tests/
+# src/main.py: Testa sistema ANTIGO
+def test_validation():
+    normalize_consulta_data()      # ❌ Sistema legado
+    validate_brazilian_phone()    # ❌ Sistema legado
+
+# tests/test_unified_validation.py: Testa sistema NOVO  
+DataNormalizer().normalize_consultation_data()  # ✅ Sistema atual
+```
+
+#### **Cobertura Insuficiente**:
+- Apenas 4 arquivos de teste para sistema complexo
+- Falta testes de integração entre módulos
+- Falta testes de performance e carga
+- Falta testes dos módulos reasoning modulares
+
+**Ação Necessária**:
+```python
+# Estrutura de testes recomendada:
+tests/
 ├── unit/
 │   ├── core/
-│   │   ├── test_validators.py
-│   │   ├── test_extractors.py
-│   │   └── test_reasoning.py
+│   │   ├── test_validation/
+│   │   ├── test_reasoning/
+│   │   └── test_extraction/
 │   ├── services/
-│   │   ├── test_chat_service.py
-│   │   └── test_validation_service.py
-│   └── api/
-│       ├── test_endpoints.py
-│       └── test_schemas.py
+│   ├── api/
 ├── integration/
 │   ├── test_chat_flow.py
-│   ├── test_validation_flow.py
-│   └── test_persistence_flow.py
-└── performance/
-    ├── test_load.py
-    └── test_memory.py
+│   ├── test_persistence_flow.py
+├── performance/
+└── fixtures/
 ```
 
-**Esforço**: 2-3 sprints
-**Benefício**: 90% de cobertura, refatorações seguras
-
 ---
 
-### 7. Logging Inconsistente
+### **#8 - PERFORMANCE NÃO OTIMIZADA**
+**🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
-**Status: ✅ RESOLVIDO em 2025-07-21**
+**Problemas de Performance**:
 
-**Ações realizadas:**
-- Criado módulo `src/core/logging/logger_factory.py` com logger estruturado (JSON)
-- Todos os módulos que usavam `loguru` ou `logging` migrados para o novo padrão (`database.py`, `reasoning_coordinator.py`, `llm_strategist.py`, `fallback_handler.py`, `conversation_flow.py`, `response_composer.py`, `main.py`, `api/main.py`)
-- Removido antigo `setup_logging` e imports obsoletos
-- Logs agora padronizados em JSON no console Docker
-- Backend validado em ambiente Docker, logs emitidos corretamente
-
-**Benefício:**
-- Debugging e rastreabilidade facilitados
-- Monitoramento estruturado
-- Padrão único para todo o backend
-
----
-
-### **8. Configuração Espalhada**
-
-**Status: ✅ RESOLVIDO em 2025-07-22**
-
-**Problema Original**: Configurações em múltiplos lugares
-- `config.py` centralizado mas não usado consistentemente
-- Hardcoded values em alguns módulos
-- Difícil configurar diferentes ambientes
-- Falta validação de configuração
-
-**Solução Implementada**:
+#### **Operações Síncronas Desnecessárias**:
 ```python
-# Implementado: src/core/config/
-├── defaults.py              ✅ Valores padrão por ambiente
-├── environment.py           ✅ Detecção de ambiente
-├── validation.py            ✅ Validação abrangente
-└── settings.py              ✅ Configurações estendidas
-
-# Estendido: src/core/config.py
-✅ Configurações centralizadas expandidas
-✅ Validação automática integrada
+# Múltiplas chamadas LLM sequenciais
+# Validações redundantes executadas múltiplas vezes
+# Falta de cache para validações repetitivas
 ```
 
-**Ações Realizadas:**
-- Estendido `src/core/config.py` com configurações de timeout, CORS, URLs e limites de schema
-- Migrado hardcoded values para configuração centralizada:
-  * OpenAI API URL e timeout em `openai_client.py`
-  * CORS origins em `api/main.py`
-  * Database timeout em `system.py`
-  * Base URL em `main.py`
-- Implementado validação automática de todas configurações estendidas
-- Criado módulos especializados para defaults, validation e environment detection
-- Mantido backward compatibility com sistema existente
-- Testado sistema completo via Docker: endpoints funcionando normalmente
-
-**Benefícios Alcançados:**
-- ✅ **Configuração 100% centralizada**: Eliminados hardcoded values críticos
-- ✅ **Validação automática**: Detecção precoce de configurações inválidas
-- ✅ **Flexibilidade por ambiente**: Configurações ajustáveis via environment variables
-- ✅ **Manutenibilidade**: Sistema modular e extensível para futuras configurações
-- ✅ **Compatibilidade**: Zero breaking changes, sistema continua funcionando
-- ✅ **Deployments confiáveis**: Configurações validadas e centralizadas
-
-**Esforço Real**: 1 sessão de implementação incremental
-**Impacto**: Deployments 80% mais confiáveis e configuração 100% centralizada
-
----
-
-## 🔵 **BAIXO - Impacto Baixo, Esforço Baixo**
-
-### **9. Performance Não Otimizada**
-
-**Problema**: Operações síncronas desnecessárias
-- Múltiplas chamadas LLM sequenciais
-- Validações redundantes
-- Falta de cache
-- Queries N+1 no banco
-
-**Impacto**:
-- Latência alta
-- Uso excessivo de recursos
-- Experiência do usuário degradada
-- Custos elevados
-
-**Solução Proposta**:
+#### **Instâncias Duplicadas**:
 ```python
-# Otimizações:
-- Cache de validações
-- Batch processing para LLM
-- Connection pooling
-- Async operations
+# reasoning_engine.py cria:
+self.question_generator = QuestionGenerator()
+self.data_summarizer = DataSummarizer()
+self.conversation_manager = ConversationManager()
+
+# coordinator cria:
+self.llm_strategist = LLMStrategist()
+self.conversation_flow = ConversationFlow()  # Funcionalidade similar
+self.response_composer = ResponseComposer()  # Funcionalidade similar
 ```
 
-**Esforço**: 2 sprints
-**Benefício**: Performance 40% melhorada
-
----
-
-### **10. Documentação Insuficiente**
-
-**Problema**: Falta documentação técnica
-- APIs não documentadas
-- Arquitetura não documentada
-- Falta exemplos de uso
-- Difícil para novos desenvolvedores
-
-**Impacto**:
-- Onboarding lento
-- Manutenção custosa
-- Difícil integrar com outros sistemas
-- Conhecimento não compartilhado
-
-**Solução Proposta**:
+#### **Queries N+1 e Falta de Connection Pooling**:
 ```python
-# Documentação:
-- API docs com OpenAPI
-- Arquitetura documentada
-- Exemplos de uso
-- Guias de contribuição
+# Repository pattern sem otimizações
+# Conexões de banco não reutilizadas
+# Falta de batch operations
 ```
 
-**Esforço**: 1 sprint
-**Benefício**: Onboarding 70% mais rápido
+**Otimizações Recomendadas**:
+- Implementar cache de validações
+- Usar async operations onde possível
+- Connection pooling para banco
+- Singleton pattern para services pesados
+- Batch processing para operações LLM
 
 ---
 
-## 📊 **Plano de Ação Prioritário**
+### **#9 - CONFIGURAÇÃO AINDA ESPALHADA**
+**🎯 Impacto**: Deploy arriscado, configuração inconsistente entre ambientes
 
-### **Fase 1: Fundação (Sprints 1-4)**
-1. **Container de Dependências** (Sprint 1)
-2. **Logging Estruturado** (Sprint 1)
-3. **Configuração Centralizada** (Sprint 2)
-4. **Testes Unitários** (Sprints 2-3)
-5. **Testes de Integração** (Sprint 4)
+**Hardcoded Values Remanescentes**:
+```python
+# src/main.py line 128:
+url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 
-### **Fase 2: Refatoração Core (Sprints 5-8)**
-1. **Validação Unificada** (Sprints 5-6)
-2. **Services Especializados** (Sprints 6-7)
-3. **Reasoning Simplificado** (Sprint 8)
+# Várias configurações ainda não centralizadas:
+# - Timeouts específicos
+# - URLs de serviços externos
+# - Limites de recursos
+```
 
-### **Fase 3: Organização (Sprints 9-11)**
-1. **Reestruturação de Arquivos** (Sprints 9-10)
-2. **Performance Otimizada** (Sprint 11)
-
-### **Fase 4: Documentação (Sprint 12)**
-1. **Documentação Completa**
-2. **Guias de Contribuição**
+**Centralização Necessária**:
+- Mover todos os hardcoded values para `settings.py`
+- Criar configurações específicas por ambiente
+- Validação automática de configurações críticas
 
 ---
 
-## 🎯 **Métricas de Sucesso**
+## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 
-### **Quantitativas:**
-- **Redução de código**: 40% menos linhas
-- **Cobertura de testes**: 90%+
-- **Performance**: 40% mais rápido
-- **Bugs em produção**: 60% menos
+### **#10 - DOCUMENTAÇÃO INSUFICIENTE**
+**🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
-### **Qualitativas:**
-- **Manutenibilidade**: Código mais limpo e organizado
-- **Testabilidade**: Componentes isolados e testáveis
-- **Escalabilidade**: Arquitetura preparada para crescimento
-- **Onboarding**: Novos devs em 1 semana
+**Lacunas Documentais**:
+- APIs não documentadas com OpenAPI
+- Arquitetura de reasoning não explicada
+- Falta exemplos de uso dos services
+- Guias de contribuição ausentes
+- Decisões arquiteturais não documentadas
 
----
+**Documentação Necessária**:
+```python
+# API Documentation:
+# - OpenAPI specs para todos endpoints
+# - Exemplos de request/response
+# - Error codes e handling
 
-## 📝 **Notas de Implementação**
+# Architecture Documentation:
+# - Diagramas de componentes
+# - Fluxo de dados
+# - Decisões técnicas e trade-offs
 
-### **Princípios:**
-1. **Zero Breaking Changes** - Manter API 100% compatível
-2. **Refatoração Gradual** - Uma área por vez
-3. **Testes Primeiro** - TDD para mudanças
-4. **Documentação Atualizada** - Docs junto com código
-
-### **Riscos:**
-1. **Regressões** - Mitigar com testes abrangentes
-2. **Performance** - Monitorar métricas durante refatoração
-3. **Complexidade** - Manter mudanças pequenas e focadas
-
-### **Validação:**
-1. **Testes automatizados** para cada mudança
-2. **Code review** obrigatório
-3. **Performance testing** antes do merge
-4. **Documentação atualizada** junto com código
+# Developer Guides:
+# - Setup environment
+# - Debugging guide
+# - Contribution guidelines
+```
 
 ---
 
-*Documento criado em: 2024-12-19*
-*Última atualização: 2024-12-19*
-*Responsável: Equipe de Desenvolvimento* 
+## 📊 **MATRIZ DE PRIORIZAÇÃO**
+
+```
+IMPACTO vs COMPLEXIDADE:
+
+Alto Impacto    │ #1 Imports     │ #5 Arquitetura │
+                │ #2 Arquivos    │ #6 Estrutura   │
+                │ #3 Wrapper     │                │
+                ├────────────────┼────────────────│
+Médio Impacto   │ #7 Testes      │ #8 Performance │
+                │ #9 Config      │                │
+                ├────────────────┼────────────────│
+Baixo Impacto   │ #10 Docs       │                │
+                │                │                │
+   Baixa Complex.│               │ Alta Complex.  │
+```
+
+---
+
+## 🎯 **PLANO DE EXECUÇÃO RECOMENDADO**
+
+### **🚨 FASE CRÍTICA - Resolver Primeiro**
+```bash
+# #1 - Imports Obsoletos
+# #2 - Arquivos Legados  
+# #3 - Reasoning Wrapper
+```
+**Objetivo**: Sistema funcional e sem confusão sobre qual código usar
+
+### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
+```bash
+# #4 - Funcionalidades Duplicadas
+# #5 - Arquitetura Fragmentada
+# #7 - Testes Inconsistentes
+```
+**Objetivo**: Arquitetura limpa e confiável
+
+### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
+```bash
+# #6 - Estrutura de Arquivos
+# #8 - Performance
+# #9 - Configuração
+# #10 - Documentação
+```
+**Objetivo**: Sistema otimizado e bem documentado
+
+---
+
+## 🛠️ **INSTRUÇÕES PARA CURSOR/CLAUDE CODE**
+
+### **Estratégia de Execução**:
+1. **Uma issue por vez** - Não misturar problemas diferentes
+2. **Testes após cada mudança** - Validar que sistema funciona
+3. **Commits específicos** - Facilitar rollback se necessário
+4. **Backup de arquivos críticos** - Antes de grandes mudanças
+
+### **Ordem de Segurança**:
+1. **Mais seguro**: #1, #2, #10 (baixo risco de quebrar)
+2. **Médio risco**: #3, #4, #7, #9 (testar bem)
+3. **Alto risco**: #5, #6, #8 (mudanças estruturais grandes)
+
+### **Validação Necessária**:
+```bash
+# Após cada mudança:
+docker-compose up --build
+curl http://localhost:8000/system/health
+python -m pytest tests/ -v
+```
+
+---
+
+*Documento criado em: 2025-01-21*  
+*Baseado em análise completa do código atual*  
+*Organizado para execução via Cursor/Claude Code*
