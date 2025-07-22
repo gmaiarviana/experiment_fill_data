@@ -7,6 +7,7 @@ from src.api.routers.chat import router as chat_router
 from src.api.routers.extract import router as extract_router
 from src.api.routers.validate import router as validate_router
 from src.api.routers.sessions import router as sessions_router
+from src.api.routers.consultations import router as consultations_router
 # Imports moved to container for centralized management
 from src.core.validation.normalizers.data_normalizer import DataNormalizer
 from src.core.logging.logger_factory import get_logger
@@ -40,6 +41,7 @@ app.include_router(chat_router)
 app.include_router(extract_router)
 app.include_router(validate_router)
 app.include_router(sessions_router)
+app.include_router(consultations_router)
 
 # Configure CORS middleware with centralized settings
 settings = get_settings()
@@ -114,64 +116,3 @@ async def root():
         "message": "Data Structuring Agent API",
         "status": "running"
     }
-
-
-@app.get("/consultations")
-async def list_consultations():
-    """List all persisted consultations"""
-    logger.info("=== INÍCIO: Endpoint /consultations ===")
-    
-    try:
-        consultation_service = get_consultation_service()
-        if consultation_service is None:
-            raise HTTPException(status_code=503, detail="Consultation service não disponível")
-        
-        # Get consultations from service
-        consultations = consultation_service.list_consultations(limit=50)
-        
-        logger.info(f"Listando {len(consultations)} consultas persistidas")
-        logger.info("=== FIM: Endpoint /consultations - Sucesso ===")
-        
-        return {
-            "consultations": consultations,
-            "total_consultations": len(consultations),
-            "timestamp": datetime.utcnow()
-        }
-        
-    except HTTPException:
-        logger.error("=== FIM: Endpoint /consultations - HTTPException ===")
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao listar consultas: {e}")
-        logger.error("=== FIM: Endpoint /consultations - Erro ===")
-        raise HTTPException(status_code=500, detail=f"Erro ao listar consultas: {str(e)}")
-
-
-@app.get("/consultations/{consultation_id}")
-async def get_consultation(consultation_id: int):
-    """Get a specific consultation by ID"""
-    logger.info(f"=== INÍCIO: Endpoint /consultations/{consultation_id} ===")
-    
-    try:
-        consultation_service = get_consultation_service()
-        if consultation_service is None:
-            raise HTTPException(status_code=503, detail="Consultation service não disponível")
-        
-        # Get consultation from service
-        consultation = consultation_service.get_consultation(consultation_id)
-        
-        if consultation is None:
-            raise HTTPException(status_code=404, detail=f"Consulta com ID {consultation_id} não encontrada")
-        
-        logger.info(f"Consulta {consultation_id} recuperada com sucesso")
-        logger.info("=== FIM: Endpoint /consultations/{consultation_id} - Sucesso ===")
-        
-        return consultation
-        
-    except HTTPException:
-        logger.error("=== FIM: Endpoint /consultations/{consultation_id} - HTTPException ===")
-        raise
-    except Exception as e:
-        logger.error(f"Erro ao recuperar consulta {consultation_id}: {e}")
-        logger.error("=== FIM: Endpoint /consultations/{consultation_id} - Erro ===")
-        raise HTTPException(status_code=500, detail=f"Erro ao recuperar consulta: {str(e)}")
