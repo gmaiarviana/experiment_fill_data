@@ -7,7 +7,7 @@ to persisted consultation record with proper error handling and logging.
 
 from src.repositories.consulta_repository import ConsultaRepository
 from src.core.entity_extraction import EntityExtractor
-from src.core.data_normalizer import normalize_consulta_data
+from src.core.validation.normalizers.data_normalizer import DataNormalizer
 from src.core.database import get_session_factory
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional, List
@@ -35,6 +35,7 @@ class ConsultationService:
             entity_extractor: EntityExtractor opcional para dependency injection
         """
         self.entity_extractor = entity_extractor or EntityExtractor()
+        self.data_normalizer = DataNormalizer()
         self.session_factory = get_session_factory()
         self.logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
         
@@ -118,11 +119,14 @@ class ConsultationService:
             
             # Step 2: Normalize and validate data
             self.logger.debug("Step 2: Normalizing and validating data")
-            normalization_result = normalize_consulta_data(extracted_data)
+            normalization_result = self.data_normalizer.normalize_consultation_data(extracted_data)
             
-            normalized_data = normalization_result.get("normalized_data", {})
-            validation_errors = normalization_result.get("validation_errors", [])
-            normalized_confidence = normalization_result.get("confidence_score", 0.0)
+            normalized_data = normalization_result.normalized_data
+            validation_errors = []
+            for field_result in normalization_result.validation_summary.field_results.values():
+                if field_result.errors:
+                    validation_errors.extend(field_result.errors)
+            normalized_confidence = normalization_result.confidence_score
             
             # Use the higher confidence score between extraction and normalization
             final_confidence = max(confidence_score, normalized_confidence)

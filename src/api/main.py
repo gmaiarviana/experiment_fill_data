@@ -4,7 +4,7 @@ from fastapi.responses import JSONResponse
 from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequest, EntityExtractionResponse, ValidationRequest, ValidationResponse
 from src.api.routers.system import router as system_router
 # Imports moved to container for centralized management
-from src.core.data_normalizer import normalize_consulta_data, normalize_extracted_entities
+from src.core.validation.normalizers.data_normalizer import DataNormalizer
 from src.core.logging.logger_factory import get_logger
 from src.core.config import get_settings
 from src.core.database import create_tables
@@ -19,6 +19,9 @@ settings = get_settings()
 
 # Setup logging with configured log level
 logger = get_logger(__name__)
+
+# Initialize unified data normalizer
+data_normalizer = DataNormalizer()
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -448,14 +451,24 @@ async def validate_data(request: Request) -> ValidationResponse:
                 confidence_score=0.0
             )
         
-        # Process validation based on domain
+        # Process validation using unified normalizer
         try:
-            if validation_request.domain == "consulta":
-                logger.info("Usando normalize_consulta_data para domínio 'consulta'")
-                result = normalize_consulta_data(validation_request.data)
-            else:
-                logger.info(f"Usando normalize_extracted_entities para domínio '{validation_request.domain}'")
-                result = normalize_extracted_entities(validation_request.data, validation_request.domain)
+            logger.info(f"Usando DataNormalizer unificado para domínio '{validation_request.domain}'")
+            normalization_result = data_normalizer.normalize_consultation_data(validation_request.data)
+            
+            # Convert to expected format for backward compatibility  
+            validation_errors = []
+            for field_result in normalization_result.validation_summary.field_results.values():
+                if field_result.errors:
+                    validation_errors.extend(field_result.errors)
+            
+            result = {
+                "normalized_data": normalization_result.normalized_data,
+                "validation_errors": validation_errors,
+                "confidence_score": normalization_result.confidence_score,
+                "field_mapping_info": normalization_result.field_mapping_info,
+                "success": normalization_result.success
+            }
             
             logger.info("Validação realizada com sucesso")
             logger.info(f"Result completo: {json.dumps(result, ensure_ascii=False, indent=2)}")

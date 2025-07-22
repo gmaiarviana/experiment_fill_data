@@ -2,7 +2,6 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime
 from loguru import logger
 from src.core.entity_extraction import EntityExtractor
-from src.core.data_normalizer import normalize_consulta_data
 from src.core.question_generator import QuestionGenerator
 from src.core.data_summarizer import DataSummarizer
 from src.core.conversation_manager import ConversationManager
