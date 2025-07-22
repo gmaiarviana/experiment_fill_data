@@ -22,7 +22,7 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **SQLAlchemy**: ORM para persistência de dados
 - **PostgreSQL**: Banco de dados principal (via Docker)
 - **OpenAI API**: LLM para conversação via requests HTTP (estável)
-- **ReasoningEngine**: Motor de raciocínio para decisões conversacionais
+- **Reasoning System**: Sistema modular de raciocínio (ResponseComposer, ConversationFlow, LLMStrategist)
 - **Docker Compose**: Containerização completa
 
 ### **Interface e Acesso aos Dados**
@@ -162,11 +162,11 @@ Act:      "Pergunta: Que tipo de consulta e qual horário?"
 
 **Decisão**: Sistema modular com componentes especializados para evitar loops, repetições e facilitar manutenção.
 
-**Componentes Modulares**:
-- **QuestionGenerator**: Geração de perguntas contextuais e templates de resposta
-- **DataSummarizer**: Sumarização de dados e verificação de completude
-- **ConversationManager**: Gestão de estado da conversa e prevenção de loops
-- **ReasoningEngine**: Motor de raciocínio que orquestra os componentes
+**Componentes Modulares** (Consolidados - TD#3 Resolvido):
+- ✅ **ResponseComposer**: Geração consolidada de perguntas contextuais, templates e respostas naturais
+- **DataSummarizer**: Sumarização de dados e verificação de completude (mantido)
+- **ConversationFlow**: Gestão de estado da conversa, extração e validação (consolidado)
+- **LLMStrategist**: Análise de intenções e estratégias conversacionais
 
 **Benefícios**:
 - Evita loops e repetições na conversa

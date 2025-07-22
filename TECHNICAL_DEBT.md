@@ -71,46 +71,21 @@ system_prompt = """- "extract": Extrair dados
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#3 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
-**🎯 Impacto**: Confusão sobre qual implementação usar, código duplicado, manutenção fragmentada
+### ✅ **#3 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS - RESOLVIDO**
+**Status**: **IMPLEMENTADO** - 2025-07-22
 
-**Duplicações Identificadas**:
+**Ações Realizadas**:
+- ✅ **Question Generation consolidado**: Migrou lógica de `QuestionGenerator` para `ResponseComposer`
+- ✅ **Data Summarization consolidado**: Manteve `DataSummarizer`, removeu duplicação de `ConversationFlow`
+- ✅ **Context Management consolidado**: Manteve `ConversationFlow`, removeu `ConversationManager` não utilizado
+- ✅ **Arquivos removidos**: `src/core/question_generator.py` (140 linhas) e `src/core/conversation_manager.py` (309 linhas)
+- ✅ **Código limpo**: 758 linhas de código duplicado removidas, 0 imports órfãos
 
-#### **Question Generation (3 implementações)**:
-```python
-# src/core/question_generator.py: QuestionGenerator class
-# src/core/reasoning/response_composer.py: Templates similares
-# ✅ REMOVIDO: src/core/reasoning_engine.py já foi removido
-```
-
-#### **Data Summarization (3 implementações)**:
-```python
-# src/core/data_summarizer.py: DataSummarizer class  
-# src/core/reasoning/conversation_flow.py: _summarize_extracted_data()
-# ✅ REMOVIDO: src/core/reasoning_engine.py já foi removido
-```
-
-#### **Context Management (3 implementações)**:
-```python
-# src/core/conversation_manager.py: ConversationManager
-# src/core/reasoning/conversation_flow.py: context management methods
-# ✅ REMOVIDO: src/core/reasoning_engine.py já foi removido
-```
-
-**Estratégia de Consolidação**:
-1. **Manter** implementação mais robusta de cada funcionalidade
-2. **Migrar** dependências para implementação escolhida  
-3. **Remover** implementações redundantes
-4. **Atualizar** imports em arquivos dependentes
-
-**Recomendação de Consolidação**:
-- **Question Generation**: Manter `ResponseComposer`, migrar lógica de `QuestionGenerator`
-- **Data Summarization**: Manter `DataSummarizer`, remover de `ConversationFlow`  
-- **Context Management**: Manter `ConversationFlow`, migrar de `ConversationManager`
+**Resultado**: Sistema funcional com responsabilidades consolidadas, manutenibilidade melhorada.
 
 ---
 
-### **#4 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
+### **#3 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
 **🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
 **Problemas Estruturais**:
@@ -149,17 +124,17 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#5 - ESTRUTURA DE ARQUIVOS CONFUSA**
+### **#4 - ESTRUTURA DE ARQUIVOS CONFUSA**
 **🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
 
 **Problemas de Organização**:
 
 #### **Arquivos Muito Grandes**:
 ```python
-src/api/main.py                    # 404 linhas - endpoints + lógica
-src/core/entity_extraction.py     # 426 linhas - múltiplas responsabilidades
-src/core/reasoning_engine.py      # 375 linhas - wrapper desnecessário
-src/core/reasoning/response_composer.py # 448 linhas - muito complexo
+src/api/main.py                          # 673 linhas - endpoints + lógica (PIOROU)
+src/core/entity_extraction.py           # 447 linhas - múltiplas responsabilidades
+src/core/reasoning/response_composer.py # 613 linhas - consolidado mas ainda complexo
+✅ REMOVIDO: src/core/reasoning_engine.py     # Foi removido em sessões anteriores
 ```
 
 #### **Estrutura Inconsistente**:
@@ -195,7 +170,7 @@ src/
 
 ## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
 
-### **#6 - PERFORMANCE NÃO OTIMIZADA**
+### **#5 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -239,7 +214,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 
-### **#7 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#6 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -272,17 +247,17 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 ## 📊 **MATRIZ DE PRIORIZAÇÃO**
 
 ```
-IMPACTO vs COMPLEXIDADE:
+IMPACTO vs COMPLEXIDADE (ATUALIZADO):
 
 Alto Impacto    │                │ #1 Context     │
                 │                │ #2 Intelligence│
-                │                │ #4 Arquitetura │
+                │                │ #3 Arquitetura │
                 ├────────────────┼────────────────│
-Médio Impacto   │ #3 Duplicadas  │ #5 Estrutura   │
-                │                │ #6 Performance │
+Médio Impacto   │ ✅ RESOLVIDO  │ #4 Estrutura   │
+                │ #3 Duplicadas │ #5 Performance │
                 │                │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #7 Docs        │                │
+Baixo Impacto   │ #6 Docs        │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -300,16 +275,16 @@ Baixo Impacto   │ #7 Docs        │                │
 
 ### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
 ```bash
-# #3 - Funcionalidades Duplicadas
-# #4 - Arquitetura Fragmentada
+# ✅ #3 - Funcionalidades Duplicadas (RESOLVIDO)
+# #3 - Arquitetura Fragmentada (renumerado)
 ```
 **Objetivo**: Arquitetura limpa e confiável
 
 ### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
 ```bash
-# #5 - Estrutura de Arquivos
-# #6 - Performance
-# #7 - Documentação
+# #4 - Estrutura de Arquivos (renumerado)
+# #5 - Performance (renumerado)
+# #6 - Documentação (renumerado)
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
