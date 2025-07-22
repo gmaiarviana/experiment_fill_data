@@ -1,6 +1,8 @@
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from loguru import logger
+from src.core.logging.logger_factory import get_logger
+
+logger = get_logger(__name__)
 from src.core.question_generator import QuestionGenerator
 from src.core.data_summarizer import DataSummarizer
 

@@ -408,29 +408,31 @@ class EntityExtractor:
         
         # Processa expressões combinadas
         for combined_expr in temporal_info["combined_expressions"]:
-            # Extrai componentes da expressão combinada
+            # Extrai componentes da expressão combinada usando DateValidator
+            date_validator = DateValidator()
+            
             if "amanhã" in combined_expr or "amanha" in combined_expr:
                 # Processa data primeiro
-                date_result = parse_relative_date("amanhã")
-                if date_result["valid"]:
-                    processed_data["data"] = date_result["iso_date"]
+                date_result = date_validator.validate("amanhã")
+                if date_result.is_valid:
+                    processed_data["data"] = date_result.normalized_value
                 
                 # Processa horário
                 time_part = combined_expr.replace("amanhã", "").replace("amanha", "").strip()
                 if time_part:
-                    time_result = parse_relative_time(time_part)
-                    if time_result["valid"]:
-                        processed_data["horario"] = time_result["time"]
-                        logger.info(f"Expressão combinada processada: {combined_expr} -> data: {date_result['iso_date']}, horário: {time_result['time']}")
+                    time_result = date_validator.validate_time(time_part)
+                    if time_result.is_valid:
+                        processed_data["horario"] = time_result.normalized_value
+                        logger.info(f"Expressão combinada processada: {combined_expr} -> data: {date_result.normalized_value}, horário: {time_result.normalized_value}")
             
             elif "hoje" in combined_expr:
                 # Processa apenas horário para hoje
                 time_part = combined_expr.replace("hoje", "").strip()
                 if time_part:
-                    time_result = parse_relative_time(time_part)
-                    if time_result["valid"]:
-                        processed_data["horario"] = time_result["time"]
-                        logger.info(f"Expressão combinada processada: {combined_expr} -> horário: {time_result['time']}")
+                    time_result = date_validator.validate_time(time_part)
+                    if time_result.is_valid:
+                        processed_data["horario"] = time_result.normalized_value
+                        logger.info(f"Expressão combinada processada: {combined_expr} -> horário: {time_result.normalized_value}")
         
         return processed_data
     

@@ -12,8 +12,7 @@ from typing import Optional, List
 from .core.config import get_settings
 from .core.logging.logger_factory import get_logger
 from .core.entity_extraction import EntityExtractor
-from .core.validators import validate_brazilian_phone, parse_relative_date, normalize_name, calculate_validation_confidence
-from .core.data_normalizer import normalize_consulta_data
+from .core.validation.normalizers.data_normalizer import DataNormalizer
 from .core.reasoning_engine import ReasoningEngine
 from .core.database import create_tables, test_connection, get_engine
 from .services.consultation_service import ConsultationService
@@ -46,24 +45,18 @@ def test_validation(data_json: str) -> None:
         # Parse JSON input
         data = json.loads(data_json)
         
-        # Validate and normalize data
-        validation_result = {}
-        normalized_data = normalize_consulta_data(data)
+        # Initialize DataNormalizer
+        normalizer = DataNormalizer()
         
-        # Test phone validation if present
-        if 'phone' in data and data['phone']:
-            validation_result['phone'] = validate_brazilian_phone(str(data['phone']))
+        # Normalize consultation data using new system
+        normalized_data = normalizer.normalize_consultation_data(data)
         
-        # Test date parsing if present
-        if 'date' in data and data['date']:
-            validation_result['date'] = parse_relative_date(str(data['date']))
-        
-        # Test name normalization if present
-        if 'name' in data and data['name']:
-            validation_result['name'] = normalize_name(str(data['name']))
-        
-        # Calculate confidence
-        validation_result['confidence'] = calculate_validation_confidence(data)
+        # Get validation results from the normalized data
+        validation_result = {
+            'success': normalized_data.get('success', False),
+            'confidence': normalized_data.get('confidence', 0.0),
+            'errors': normalized_data.get('errors', [])
+        }
         
         print("=== Data Validation & Normalization Test ===")
         print(f"Input: {json.dumps(data, indent=2, ensure_ascii=False)}")
