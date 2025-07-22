@@ -71,20 +71,6 @@ system_prompt = """- "extract": Extrair dados
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### ✅ **#3 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS - RESOLVIDO**
-**Status**: **IMPLEMENTADO** - 2025-07-22
-
-**Ações Realizadas**:
-- ✅ **Question Generation consolidado**: Migrou lógica de `QuestionGenerator` para `ResponseComposer`
-- ✅ **Data Summarization consolidado**: Manteve `DataSummarizer`, removeu duplicação de `ConversationFlow`
-- ✅ **Context Management consolidado**: Manteve `ConversationFlow`, removeu `ConversationManager` não utilizado
-- ✅ **Arquivos removidos**: `src/core/question_generator.py` (140 linhas) e `src/core/conversation_manager.py` (309 linhas)
-- ✅ **Código limpo**: 758 linhas de código duplicado removidas, 0 imports órfãos
-
-**Resultado**: Sistema funcional com responsabilidades consolidadas, manutenibilidade melhorada.
-
----
-
 ### **#3 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
 **🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
