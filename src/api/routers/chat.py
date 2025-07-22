@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException
 from src.api.schemas.chat import ChatRequest, ChatResponse
 from datetime import datetime
 from typing import Dict, Any
@@ -14,39 +14,15 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/chat/message", response_model=ChatResponse)
-async def chat_message(request: Request) -> ChatResponse:
+async def chat_message(chat_request: ChatRequest) -> ChatResponse:
     """Process chat message using ChatService."""
     logger.info("=== INÍCIO: Endpoint /chat/message com ChatService ===")
     
     try:
-        # Parse request body
-        logger.info(f"Content-Type: {request.headers.get('content-type', 'N/A')}")
-        body_bytes = await request.body()
-        logger.info(f"Raw body length: {len(body_bytes)} bytes")
-        
-        try:
-            body_text = body_bytes.decode('utf-8')
-            logger.info(f"Body decoded as UTF-8: {body_text[:200]}...")
-        except UnicodeDecodeError as e:
-            logger.error(f"Erro de encoding UTF-8: {e}")
-            raise HTTPException(status_code=400, detail="Invalid UTF-8 encoding in request body")
-        
-        try:
-            body_json = json.loads(body_text)
-            logger.info(f"JSON parsed successfully: {json.dumps(body_json, ensure_ascii=False)[:200]}...")
-        except json.JSONDecodeError as e:
-            logger.error(f"Erro ao fazer parse do JSON: {e}")
-            raise HTTPException(status_code=400, detail="Invalid JSON format")
-        
-        try:
-            chat_request = ChatRequest(**body_json)
-            logger.info(f"ChatRequest validado com sucesso: message='{chat_request.message[:50]}...'")
-        except Exception as e:
-            logger.error(f"Erro na validação Pydantic: {e}")
-            raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
+        logger.info(f"ChatRequest recebido: message='{chat_request.message[:50]}...'")
         
         # Get session ID from request
-        session_id = body_json.get("session_id")
+        session_id = chat_request.session_id
         
         # Process message using ChatService
         chat_service = get_chat_service()

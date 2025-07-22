@@ -248,11 +248,11 @@ class ChatService:
     def _add_persistence_success_message(self, response_text: str, action: str, consultation_id: int) -> str:
         """Add persistence success message to response."""
         if action == "extract":
-            return f"{response_text}\n\n✅ Consulta registrada com sucesso! (ID: {consultation_id})"
+            return f"{response_text}\n\n✅ Consulta registrada com sucesso!"
         elif action == "confirm":
-            return f"{response_text}\n\n✅ Consulta confirmada e salva! (ID: {consultation_id})"
+            return f"{response_text}\n\n✅ Consulta confirmada e salva!"
         elif action == "complete":
-            return f"{response_text}\n\n✅ Consulta completa registrada com sucesso! (ID: {consultation_id})"
+            return f"{response_text}\n\n✅ Consulta completa registrada com sucesso!"
         return response_text
     
     def _add_persistence_error_message(self, response_text: str, errors: list) -> str:
