@@ -71,10 +71,6 @@ except Exception as e:
     logger.error(f"Erro ao inicializar ServiceContainer: {e}")
     service_container = None
 
-# Global session management
-sessions: Dict[str, Dict[str, Any]] = {}
-
-
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables on startup"""
@@ -85,27 +81,6 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
         # Don't fail startup - log and continue
-
-
-def cleanup_old_sessions():
-    """Remove sessions older than 24 hours"""
-    current_time = datetime.utcnow()
-    sessions_to_remove = []
-    
-    for session_id, context in sessions.items():
-        session_start = context.get("session_start")
-        if session_start:
-            try:
-                start_time = datetime.fromisoformat(session_start)
-                if (current_time - start_time).total_seconds() > 86400:  # 24 hours
-                    sessions_to_remove.append(session_id)
-            except (ValueError, TypeError):
-                # Invalid timestamp, remove session
-                sessions_to_remove.append(session_id)
-    
-    for session_id in sessions_to_remove:
-        del sessions[session_id]
-        logger.info(f"Sessão expirada removida: {session_id}")
 
 
 @app.get("/")

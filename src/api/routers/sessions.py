@@ -1,13 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from src.core.reasoning.reasoning_coordinator import ReasoningCoordinator
+from src.core.container import get_session_service
 from datetime import datetime
 import logging
-
-# Sessions dict deve ser importado do main ou, preferencialmente, movido para um módulo compartilhado
-try:
-    from src.api.main import sessions
-except ImportError:
-    sessions = {}
 
 logger = logging.getLogger(__name__)
 
@@ -18,9 +13,10 @@ async def get_session_info(session_id: str):
     """Get session information and context"""
     logger.info(f"=== INÍCIO: Endpoint /sessions/{{session_id}} ===")
     try:
-        if session_id not in sessions:
+        session_service = get_session_service()
+        context = session_service.get_session(session_id)
+        if not context:
             raise HTTPException(status_code=404, detail="Session not found")
-        context = sessions[session_id]
         reasoning_engine = ReasoningCoordinator()
         if reasoning_engine:
             summary = reasoning_engine.get_context_summary(context)
@@ -54,9 +50,11 @@ async def delete_session(session_id: str):
     """Delete a session"""
     logger.info(f"=== INÍCIO: Endpoint DELETE /sessions/{{session_id}} ===")
     try:
-        if session_id not in sessions:
+        session_service = get_session_service()
+        context = session_service.get_session(session_id)
+        if not context:
             raise HTTPException(status_code=404, detail="Session not found")
-        del sessions[session_id]
+        session_service.delete_session(session_id)
         logger.info(f"Sessão removida: {session_id}")
         logger.info(f"=== FIM: Endpoint DELETE /sessions/{{session_id}} - Sucesso ===")
         return {"message": "Session deleted successfully"}
@@ -71,8 +69,10 @@ async def list_sessions():
     """List all active sessions"""
     logger.info("=== INÍCIO: Endpoint /sessions ===")
     try:
+        session_service = get_session_service()
+        sessions_dict = session_service.list_sessions()
         session_list = []
-        for session_id, context in sessions.items():
+        for session_id, context in sessions_dict.items():
             session_info = {
                 "session_id": session_id,
                 "session_start": context.get("session_start"),

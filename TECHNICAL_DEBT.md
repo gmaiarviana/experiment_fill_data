@@ -6,38 +6,9 @@ Documento catalogando débito técnico **pendente**. Organizado por **prioridade
 
 ---
 
-## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
-
-### **#1 - CONTEXT MANAGEMENT INCOMPLETO EM CONVERSAS SEQUENCIAIS**
-**🎯 Impacto**: Inconsistência entre old/new session patterns, contexto pode ser perdido
-
-**Problema**: Coexistência de dois sistemas de session management
-```python
-# ❌ INCONSISTÊNCIA ARQUITETURAL:
-# src/api/main.py - Old session pattern ainda existe
-sessions[session_id]["extracted_data"] = {}
-
-# ✅ vs ServiceContainer pattern (novo)  
-chat_service = get_chat_service()
-result = await chat_service.process_message(message, session_id)
-```
-
-**Ação Necessária**:
-1. **Consolidar Session Management**: Remover padrão antigo de main.py
-2. **Padronizar Chat Router**: Usar ServiceContainer consistently  
-3. **Testes Multi-turn**: Validar accumulation em conversas longas
-
-**Benefícios**:
-- Arquitetura consistente
-- Context management robusto e testável
-- Eliminação de duplicate logic
-
----
-
-
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#2 - PERFORMANCE PARCIALMENTE OTIMIZADA**
+### **#1 - PERFORMANCE PARCIALMENTE OTIMIZADA**
 **🎯 Impacto**: Algumas otimizações implementadas, mas gaps remainem
 
 **✅ PROGRESSO FEITO**:
@@ -59,7 +30,7 @@ result = await chat_service.process_message(message, session_id)
 
 ---
 
-### **#3 - COBERTURA DE TESTES INSUFICIENTE**
+### **#2 - COBERTURA DE TESTES INSUFICIENTE**
 **🎯 Impacto**: Core modules críticos sem testes, bugs não detectados
 
 **✅ PROGRESSO FEITO**:
@@ -209,7 +180,7 @@ CONSULTATION_MESSAGES = [
 
 ## 📚 **MÉDIO - Qualidade e Manutenibilidade**
 
-### **#4 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#3 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, integração difícil
 
 **Lacunas Documentais**:
@@ -230,22 +201,16 @@ CONSULTATION_MESSAGES = [
 
 ## 🎯 **PLANO DE EXECUÇÃO RECOMENDADO**
 
-### **🚨 FASE CRÍTICA - Resolver Primeiro**
-```bash
-# #1 - Context Management consolidation
-```
-**Objetivo**: Sistema estável e funcional
-
 ### **⚡ FASE QUALIDADE - Testes e Robustez**  
 ```bash
-# #3 - Critical test coverage (entity_extraction, openai_client)
+# #2 - Critical test coverage (entity_extraction, openai_client)
 ```
 **Objetivo**: Core modules testados e robustos
 
 ### **🔧 FASE OTIMIZAÇÃO - Performance e UX**
 ```bash
-# #2 - Performance optimizations  
-# #4 - Documentation completion
+# #1 - Performance optimizations  
+# #3 - Documentation completion
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
