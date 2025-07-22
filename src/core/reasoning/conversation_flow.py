@@ -23,7 +23,8 @@ class ConversationFlow:
         Inicializa o gerenciador de fluxo conversacional.
         """
         self.entity_extractor = EntityExtractor()
-        self.data_normalizer = DataNormalizer()
+        self.data_normalizer = DataNormalizer(strict_mode=False)
+        self.validation_orchestrator = ValidationOrchestrator()
         self.question_generator = QuestionGenerator()
         logger.info("ConversationFlow inicializado com EntityExtractor, DataNormalizer e QuestionGenerator")
     
@@ -75,10 +76,11 @@ class ConversationFlow:
 
                 # Normaliza dados extraídos
                 if extracted_data:
-                    normalized_data = normalize_consulta_data(extracted_data)
+                    normalization_result = self.data_normalizer.normalize_consultation_data(extracted_data)
+                    normalized_data = normalization_result.normalized_data
                     confidence = extraction_result.get("confidence", 0.0)
-                    anticipated_next = self._anticipate_next_steps(context, normalized_data.get("normalized_data", {}))
-                    progression_pattern = self._detect_data_progression(context, normalized_data.get("normalized_data", {}))
+                    anticipated_next = self._anticipate_next_steps(context, normalized_data)
+                    progression_pattern = self._detect_data_progression(context, normalized_data)
                     logger.info(f"Dados extraídos: {list(normalized_data.keys())}, Confidence: {confidence:.2f}")
                     return {
                         "action": "extract",
@@ -139,25 +141,25 @@ class ConversationFlow:
         try:
             logger.info(f"Validando dados: {list(extracted_data.keys())}")
             
-            # Valida dados usando validators
-            validation_result = validate_consulta_data(extracted_data)
+            # Valida dados usando ValidationOrchestrator
+            validation_summary = self.validation_orchestrator.validate_data(extracted_data)
             
-            if validation_result.get("is_valid"):
+            if validation_summary.is_valid:
                 logger.info("Dados validados com sucesso")
                 return {
                     "action": "validate",
                     "is_valid": True,
                     "validation_errors": [],
-                    "confidence": validation_result.get("confidence", 0.8)
+                    "confidence": validation_summary.overall_confidence
                 }
             else:
-                errors = validation_result.get("errors", [])
+                errors = validation_summary.suggestions or []
                 logger.warning(f"Dados inválidos: {errors}")
                 return {
                     "action": "validate",
                     "is_valid": False,
                     "validation_errors": errors,
-                    "confidence": validation_result.get("confidence", 0.3)
+                    "confidence": validation_summary.overall_confidence
                 }
                 
         except Exception as e:
