@@ -209,6 +209,7 @@ class ValidationService:
         business_rules = {
             "rules_applied": [],
             "violations": [],
+            "warnings": [],
             "recommendations": []
         }
         
@@ -241,7 +242,7 @@ class ValidationService:
         
         # Rule 4: Phone number format consistency
         if data.get("telefone"):
-            phone_validation = field_validations.get("telefone", {})
+            phone_validation = validation_result.get("field_validations", {}).get("telefone", {})
             if phone_validation.get("is_valid", False) and phone_validation.get("confidence", 0) < 0.9:
                 business_rules["warnings"].append("Phone number format may need verification")
         

@@ -28,9 +28,9 @@ class ChatService:
     including context management, entity extraction, validation, and persistence.
     """
     
-    def __init__(self):
+    def __init__(self, session_service: Optional[SessionService] = None):
         """Initialize ChatService with required dependencies."""
-        self.session_service = SessionService()
+        self.session_service = session_service or SessionService()
         self.settings = get_settings()
         logger.info("ChatService initialized successfully")
     

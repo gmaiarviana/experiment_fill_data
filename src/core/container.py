@@ -74,7 +74,13 @@ class ServiceContainer:
         
         if 'chat_service' not in self._services:
             from src.services.chat_service import ChatService
-            self._services['chat_service'] = ChatService()
+            # Inject shared SessionService to avoid duplication  
+            session_service = self._services.get('session_service')
+            if session_service is None:
+                from src.services.session_service import SessionService
+                session_service = SessionService()
+                self._services['session_service'] = session_service
+            self._services['chat_service'] = ChatService(session_service=session_service)
         
         if 'extraction_service' not in self._services:
             from src.services.extraction_service import ExtractionService
@@ -172,6 +178,12 @@ def get_chat_service():
     """Get the singleton ChatService instance."""
     container = ServiceContainer()
     return container.get_service('chat_service')
+
+
+def get_session_service():
+    """Get the singleton SessionService instance."""
+    container = ServiceContainer()
+    return container.get_service('session_service')
 
 
 def get_extraction_service():
