@@ -7,19 +7,16 @@ from typing import Dict, Any, Optional, List
 import random
 from src.core.logging.logger_factory import get_logger
 logger = get_logger(__name__)
-from src.core.question_generator import QuestionGenerator
-
-
 class ResponseComposer:
     """
     Compositor de respostas que gera diálogo natural e contextual.
+    Consolidado com funcionalidades de geração de perguntas.
     """
     
     def __init__(self):
         """
         Inicializa o compositor de respostas.
         """
-        self.question_generator = QuestionGenerator()
         
         # Templates para variação de respostas
         self.confirmation_templates = [
@@ -73,7 +70,60 @@ class ResponseComposer:
             "Que tipo de avaliação você quer?"
         ]
         
-        logger.info("ResponseComposer inicializado com QuestionGenerator e templates de variação")
+        # Templates contextuais consolidados do QuestionGenerator
+        self.context_templates = {
+            "welcome": [
+                "Olá! Vou te ajudar a agendar sua consulta. Para começar, qual é o nome do paciente?",
+                "Oi! Vou te auxiliar no agendamento. Primeiro, preciso saber o nome do paciente.",
+                "Perfeito! Vamos agendar sua consulta. Qual é o nome completo do paciente?"
+            ],
+            "progress_single": [
+                "Ótimo! Agora preciso do {field}.",
+                "Perfeito! Agora me informe o {field}.",
+                "Excelente! Agora preciso saber o {field}."
+            ],
+            "progress_last": [
+                "Agora só falta o {field}!",
+                "Estamos quase lá! Só preciso do {field} para finalizar.",
+                "Para concluir, só falta o {field}."
+            ],
+            "data_summary": [
+                "Perfeito! {summary}. Agora preciso de: {missing}.",
+                "Excelente! {summary}. Para completar, preciso de: {missing}.",
+                "Ótimo! {summary}. Ainda preciso de: {missing}."
+            ],
+            "correction": [
+                "Entendi, vou corrigir. Pode me informar novamente os dados corretos?",
+                "Claro! Vou ajustar. Pode me passar as informações corretas?",
+                "Perfeito! Vou corrigir. Pode me informar os dados certos?"
+            ],
+            "confirmation": [
+                "Perfeito! Tenho todas as informações. Posso confirmar o agendamento?",
+                "Excelente! Agendamento completo. Posso prosseguir com a confirmação?",
+                "Ótimo! Tenho todos os dados necessários. Posso confirmar?"
+            ],
+            "complete": [
+                "Perfeito! Agendamento confirmado com sucesso! ✅",
+                "Excelente! Consulta agendada com sucesso! ✅",
+                "Ótimo! Agendamento realizado com sucesso! ✅"
+            ],
+            "specific_request": [
+                "Claro! Preciso especificamente de: {fields}",
+                "Entendi! Para completar, preciso de: {fields}",
+                "Perfeito! Agora preciso de: {fields}"
+            ]
+        }
+        
+        # Mapeamento de campos para perguntas
+        self.field_questions = {
+            "nome": "Qual é o nome completo do paciente?",
+            "telefone": "Qual é o telefone para contato?", 
+            "data": "Para qual data você gostaria de agendar?",
+            "horario": "Qual horário prefere?",
+            "tipo_consulta": "Que tipo de consulta é esta?"
+        }
+        
+        logger.info("ResponseComposer inicializado com templates consolidados de geração de perguntas")
     
     async def compose_response(self, think_result: Dict[str, Any], extract_result: Optional[Dict[str, Any]], 
                              validate_result: Optional[Dict[str, Any]], context: Dict[str, Any]) -> Dict[str, Any]:
@@ -484,4 +534,81 @@ class ResponseComposer:
             "horario": "Horário",
             "tipo_consulta": "Tipo de consulta"
         }
-        return field_mapping.get(field, field.title()) 
+        return field_mapping.get(field, field.title())
+    
+    # ============= MÉTODOS CONSOLIDADOS DO QUESTIONGENERATOR =============
+    
+    def get_missing_fields_questions(self, missing_fields: List[str], context: Dict[str, Any] = None) -> List[str]:
+        """Consolidado do QuestionGenerator"""
+        questions = []
+        for field in missing_fields:
+            if field in self.field_questions:
+                questions.append(self.field_questions[field])
+            else:
+                questions.append(f"Qual é o {field}?")
+        return questions
+
+    def generate_contextual_question(self, template_type: str, **kwargs) -> str:
+        """Consolidado do QuestionGenerator"""
+        if template_type not in self.context_templates:
+            logger.warning(f"Template type '{template_type}' não encontrado")
+            return "Desculpe, não consegui processar sua mensagem."
+        templates = self.context_templates[template_type]
+        template = random.choice(templates)
+        try:
+            return template.format(**kwargs)
+        except KeyError as e:
+            logger.warning(f"Erro ao formatar template {template_type}: {e}")
+            return templates[0] if templates else "Desculpe, não consegui processar sua mensagem."
+
+    def generate_data_summary(self, extracted_data: Dict[str, Any]) -> str:
+        """Consolidado do QuestionGenerator"""
+        summary_parts = []
+        if extracted_data.get("nome"):
+            summary_parts.append(f"nome: {extracted_data['nome']}")
+        if extracted_data.get("telefone"):
+            summary_parts.append(f"telefone: {extracted_data['telefone']}")
+        if extracted_data.get("data"):
+            summary_parts.append(f"data: {extracted_data['data']}")
+        if extracted_data.get("horario"):
+            summary_parts.append(f"horário: {extracted_data['horario']}")
+        if extracted_data.get("tipo_consulta"):
+            summary_parts.append(f"tipo: {extracted_data['tipo_consulta']}")
+        return ", ".join(summary_parts) if summary_parts else "(sem dados)"
+
+    def generate_data_summary_question(self, extracted_data: Dict[str, Any], missing_fields: List[str]) -> str:
+        """Consolidado do QuestionGenerator"""
+        summary = self.generate_data_summary(extracted_data)
+        missing_questions = self.get_missing_fields_questions(missing_fields)
+        missing_text = ", ".join(missing_questions)
+        return self.generate_contextual_question("data_summary", summary=summary, missing=missing_text)
+
+    def generate_progress_question(self, extracted_data: Dict[str, Any], missing_fields: List[str], context: Dict[str, Any] = None) -> str:
+        """Consolidado do QuestionGenerator"""
+        completed_count = len([v for v in extracted_data.values() if v and str(v).strip()])
+        total_fields = 5
+        if completed_count == 0:
+            return self.generate_contextual_question("welcome")
+        elif completed_count == total_fields - 1 and len(missing_fields) == 1:
+            # Só falta um campo
+            field = missing_fields[0]
+            field_names = {
+                "nome": "nome completo",
+                "telefone": "telefone",
+                "data": "data",
+                "horario": "horário",
+                "tipo_consulta": "tipo de consulta"
+            }
+            field_name = field_names.get(field, field)
+            return self.generate_contextual_question("progress_last", field=field_name)
+        elif completed_count >= 2:
+            return self.generate_data_summary_question(extracted_data, missing_fields)
+        if missing_fields:
+            return self.generate_contextual_question("specific_request", fields=", ".join(missing_fields[:2]))
+        else:
+            return self.generate_contextual_question("confirmation")
+
+    def generate_summary_before_confirm(self, extracted_data: Dict[str, Any]) -> str:
+        """Consolidado do QuestionGenerator"""
+        summary = self.generate_data_summary(extracted_data)
+        return self.generate_contextual_question("summary_before_confirm", summary=summary) if "summary_before_confirm" in self.context_templates else f"Resumo: {summary}. Posso confirmar?" 

@@ -10,9 +10,6 @@ logger = get_logger(__name__)
 from src.core.entity_extraction import EntityExtractor
 from src.core.validation.normalizers.data_normalizer import DataNormalizer
 from src.core.validation.validation_orchestrator import ValidationOrchestrator
-from src.core.question_generator import QuestionGenerator
-
-
 class ConversationFlow:
     """
     Gerencia o fluxo natural da conversa, incluindo extração, validação e contexto.
@@ -25,8 +22,7 @@ class ConversationFlow:
         self.entity_extractor = EntityExtractor()
         self.data_normalizer = DataNormalizer(strict_mode=False)
         self.validation_orchestrator = ValidationOrchestrator()
-        self.question_generator = QuestionGenerator()
-        logger.info("ConversationFlow inicializado com EntityExtractor, DataNormalizer e QuestionGenerator")
+        logger.info("ConversationFlow inicializado com EntityExtractor e DataNormalizer")
     
     def initialize_context(self) -> Dict[str, Any]:
         """
@@ -367,24 +363,10 @@ class ConversationFlow:
             return "randômico"
         return "indefinido"
 
-    def _suggest_completion_strategy(self, context: Dict[str, Any]) -> str:
+    def _suggest_completion_strategy(self, context: Dict[str, Any]) -> Optional[str]:
         """
         Sugere estratégia de conclusão baseada no padrão do usuário.
+        Retorna None - delegando para ResponseComposer.
         """
-        pattern = context.get("progression_pattern", "indefinido")
-        missing_fields = self._anticipate_next_steps(context)
-        if pattern == "sequencial":
-            if missing_fields:
-                return self.question_generator.generate_progress_question(context.get("extracted_data", {}), missing_fields, context)
-            else:
-                return self.question_generator.generate_contextual_question("confirmation")
-        elif pattern == "randômico":
-            if missing_fields:
-                return self.question_generator.generate_data_summary_question(context.get("extracted_data", {}), missing_fields)
-            else:
-                return self.question_generator.generate_contextual_question("confirmation")
-        else:
-            if missing_fields:
-                return self.question_generator.generate_contextual_question("specific_request", fields=", ".join(missing_fields))
-            else:
-                return self.question_generator.generate_contextual_question("confirmation") 
+        # Estratégia movida para ResponseComposer para consolidação
+        return None 
