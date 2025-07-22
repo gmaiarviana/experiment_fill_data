@@ -4,6 +4,8 @@
 
 Documento completo catalogando débito técnico identificado em 2025. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
 
+**✅ RESOLVIDO**: #2 - ARQUIVOS LEGADOS OBSOLETOS (2025-01-21)
+
 ---
 
 ## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
@@ -46,28 +48,7 @@ logger = get_logger(__name__)
 
 ---
 
-### **#2 - ARQUIVOS LEGADOS OBSOLETOS**
-**🎯 Impacto**: Confusão sobre qual sistema usar, imports podem falhar
-
-**Arquivos para REMOÇÃO COMPLETA**:
-```bash
-src/core/logging.py              # 35 linhas - Substituído por logger_factory/
-```
-
-**Arquivos para VERIFICAR e remover se substituídos**:
-```bash
-# Verificar se existem versões antigas que foram substituídas:
-src/core/validators.py           # Se foi substituído por validation/
-src/core/data_normalizer.py     # Se foi substituído por validation/normalizers/
-```
-
-**Validação Necessária**:
-- Confirmar que nenhum código ativo importa estes arquivos
-- Executar testes após remoção para garantir que sistema funciona
-
----
-
-### **#3 - REASONING ENGINE WRAPPER DESNECESSÁRIO**
+### **#2 - REASONING ENGINE WRAPPER DESNECESSÁRIO**
 **🎯 Impacto**: 375 linhas de código morto, duplicação de funcionalidade, performance degradada
 
 **Problema**: `src/core/reasoning_engine.py` é apenas wrapper que delega TUDO para `ReasoningCoordinator`
@@ -103,7 +84,7 @@ src/services/consultation_service.py:
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#4 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
+### **#3 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
 **🎯 Impacto**: Confusão sobre qual implementação usar, código duplicado, manutenção fragmentada
 
 **Duplicações Identificadas**:
@@ -142,7 +123,7 @@ src/services/consultation_service.py:
 
 ---
 
-### **#5 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
+### **#4 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
 **🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
 **Problemas Estruturais**:
@@ -181,7 +162,7 @@ src/services/consultation_service.py:
 
 ---
 
-### **#6 - ESTRUTURA DE ARQUIVOS CONFUSA**
+### **#5 - ESTRUTURA DE ARQUIVOS CONFUSA**
 **🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
 
 **Problemas de Organização**:
@@ -227,7 +208,7 @@ src/
 
 ## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
 
-### **#7 - TESTES INCONSISTENTES E INSUFICIENTES**
+### **#6 - TESTES INCONSISTENTES E INSUFICIENTES**
 **🎯 Impacto**: Bugs em produção, refatorações arriscadas, baixa confiabilidade
 
 **Problemas Identificados**:
@@ -269,7 +250,7 @@ tests/
 
 ---
 
-### **#8 - PERFORMANCE NÃO OTIMIZADA**
+### **#7 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -310,7 +291,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-### **#9 - CONFIGURAÇÃO AINDA ESPALHADA**
+### **#8 - CONFIGURAÇÃO AINDA ESPALHADA**
 **🎯 Impacto**: Deploy arriscado, configuração inconsistente entre ambientes
 
 **Hardcoded Values Remanescentes**:
@@ -333,7 +314,7 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 
 ## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 
-### **#10 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#9 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -368,14 +349,14 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 ```
 IMPACTO vs COMPLEXIDADE:
 
-Alto Impacto    │ #1 Imports     │ #5 Arquitetura │
-                │ #2 Arquivos    │ #6 Estrutura   │
-                │ #3 Wrapper     │                │
+Alto Impacto    │ #1 Imports     │ #4 Arquitetura │
+                │ #2 Wrapper     │ #5 Estrutura   │
+                │                │                │
                 ├────────────────┼────────────────│
-Médio Impacto   │ #7 Testes      │ #8 Performance │
-                │ #9 Config      │                │
+Médio Impacto   │ #6 Testes      │ #7 Performance │
+                │ #8 Config      │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #10 Docs       │                │
+Baixo Impacto   │ #9 Docs        │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -387,25 +368,24 @@ Baixo Impacto   │ #10 Docs       │                │
 ### **🚨 FASE CRÍTICA - Resolver Primeiro**
 ```bash
 # #1 - Imports Obsoletos
-# #2 - Arquivos Legados  
-# #3 - Reasoning Wrapper
+# #2 - Reasoning Wrapper
 ```
 **Objetivo**: Sistema funcional e sem confusão sobre qual código usar
 
 ### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
 ```bash
-# #4 - Funcionalidades Duplicadas
-# #5 - Arquitetura Fragmentada
-# #7 - Testes Inconsistentes
+# #3 - Funcionalidades Duplicadas
+# #4 - Arquitetura Fragmentada
+# #6 - Testes Inconsistentes
 ```
 **Objetivo**: Arquitetura limpa e confiável
 
 ### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
 ```bash
-# #6 - Estrutura de Arquivos
-# #8 - Performance
-# #9 - Configuração
-# #10 - Documentação
+# #5 - Estrutura de Arquivos
+# #7 - Performance
+# #8 - Configuração
+# #9 - Documentação
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
@@ -420,20 +400,21 @@ Baixo Impacto   │ #10 Docs       │                │
 4. **Backup de arquivos críticos** - Antes de grandes mudanças
 
 ### **Ordem de Segurança**:
-1. **Mais seguro**: #1, #2, #10 (baixo risco de quebrar)
-2. **Médio risco**: #3, #4, #7, #9 (testar bem)
-3. **Alto risco**: #5, #6, #8 (mudanças estruturais grandes)
+1. **Mais seguro**: #1, #9 (baixo risco de quebrar)
+2. **Médio risco**: #2, #3, #6, #8 (testar bem)
+3. **Alto risco**: #4, #5, #7 (mudanças estruturais grandes)
 
 ### **Validação Necessária**:
 ```bash
 # Após cada mudança:
-docker-compose up --build
+docker-compose up --build -d
 curl http://localhost:8000/system/health
-python -m pytest tests/ -v
+docker-compose exec api python -m pytest tests/ -v
 ```
 
 ---
 
 *Documento criado em: 2025-01-21*  
+*Última atualização: 2025-01-21 - TD2 resolvido*  
 *Baseado em análise completa do código atual*  
 *Organizado para execução via Cursor/Claude Code*
