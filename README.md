@@ -580,6 +580,11 @@ cd frontend
 npm install
 npm run dev          # Desenvolvimento local na porta 3001
 npm run build        # Build de produção
+
+# Testes automatizados
+docker-compose exec api python -m pytest tests/integration/test_user_journey_simple.py -v -s
+docker-compose exec api python -m pytest tests/test_unified_validation.py -v
+docker-compose exec api python -m pytest tests/test_health.py -v
 ```
 
 ---
@@ -616,6 +621,15 @@ npm run build        # Build de produção
 - **Chat tracking**: Cada mensagem logada com timestamp e detalhes
 - **Visualização**: `docker logs api --tail N` para logs recentes
 - **Health monitoring**: Endpoint `/system/health` verifica todos os serviços
+
+### **Testes Automatizados** ✨
+- **Integration Tests**: 8 cenários de jornada do usuário completa (test_user_journey_simple.py)
+- **Validation Tests**: 12 testes de validação unificada para dados brasileiros (test_unified_validation.py)  
+- **Health Tests**: Monitoramento de saúde do sistema (test_health.py)
+- **Coverage**: Conversação completa, validação de dados, persistência de contexto, isolamento de sessão
+- **Execution**: Via Docker com testes contra sistema real (localhost:8000)
+- **Business Rules**: Validação de telefones brasileiros, datas futuras, normalização de nomes
+- **User Journey**: Greeting → Data Collection → Validation → Booking (end-to-end)
 
 ---
 

@@ -2,7 +2,7 @@
 
 ## 📋 Visão Geral
 
-Documento completo catalogando débito técnico identificado em 2025. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
+Documento catalogando débito técnico pendente. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
 
 ---
 
@@ -41,8 +41,6 @@ src/services/consultation_service.py:
 - Melhora performance e clareza do código
 
 ---
-
-## 🔥 **CRÍTICO - Context Data Loss (Identificado 2025-07-22)**
 
 ### **#2 - CONTEXT MANAGEMENT QUEBRADO EM CONVERSAS SEQUENCIAIS**
 **🎯 Impacto**: Dados extraídos perdidos entre mensagens, persistence inconsistente, UX degradada
@@ -104,7 +102,6 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
 ### **#4 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
@@ -116,21 +113,21 @@ system_prompt = """- "extract": Extrair dados
 ```python
 # src/core/question_generator.py: QuestionGenerator class
 # src/core/reasoning/response_composer.py: Templates similares
-# src/core/reasoning_engine.py: _get_response_template() [será removido em #3]
+# src/core/reasoning_engine.py: _get_response_template() [será removido em #1]
 ```
 
 #### **Data Summarization (3 implementações)**:
 ```python
 # src/core/data_summarizer.py: DataSummarizer class  
 # src/core/reasoning/conversation_flow.py: _summarize_extracted_data()
-# src/core/reasoning_engine.py: _summarize_extracted_data() [será removido em #3]
+# src/core/reasoning_engine.py: _summarize_extracted_data() [será removido em #1]
 ```
 
 #### **Context Management (3 implementações)**:
 ```python
 # src/core/conversation_manager.py: ConversationManager
 # src/core/reasoning/conversation_flow.py: context management methods
-# src/core/reasoning_engine.py: delegation methods [será removido em #3]
+# src/core/reasoning_engine.py: delegation methods [será removido em #1]
 ```
 
 **Estratégia de Consolidação**:
@@ -230,48 +227,6 @@ src/
 ---
 
 ## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
-
-### **#7 - TESTES INCONSISTENTES E INSUFICIENTES**
-**🎯 Impacto**: Bugs em produção, refatorações arriscadas, baixa confiabilidade
-
-**Problemas Identificados**:
-
-#### **Sistemas de Teste Conflitantes**:
-```python
-# src/main.py: Testa sistema ANTIGO
-def test_validation():
-    normalize_consulta_data()      # ❌ Sistema legado
-    validate_brazilian_phone()    # ❌ Sistema legado
-
-# tests/test_unified_validation.py: Testa sistema NOVO  
-DataNormalizer().normalize_consultation_data()  # ✅ Sistema atual
-```
-
-#### **Cobertura Insuficiente**:
-- Apenas 4 arquivos de teste para sistema complexo
-- Falta testes de integração entre módulos
-- Falta testes de performance e carga
-- Falta testes dos módulos reasoning modulares
-
-**Ação Necessária**:
-```python
-# Estrutura de testes recomendada:
-tests/
-├── unit/
-│   ├── core/
-│   │   ├── test_validation/
-│   │   ├── test_reasoning/
-│   │   └── test_extraction/
-│   ├── services/
-│   ├── api/
-├── integration/
-│   ├── test_chat_flow.py
-│   ├── test_persistence_flow.py
-├── performance/
-└── fixtures/
-```
-
----
 
 ### **#8 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
@@ -377,7 +332,7 @@ Alto Impacto    │ #1 Wrapper     │ #2 Context     │
                 │                │ #5 Arquitetura │
                 ├────────────────┼────────────────│
 Médio Impacto   │ #4 Duplicadas  │ #6 Estrutura   │
-                │ #7 Testes      │ #8 Performance │
+                │                │ #8 Performance │
                 │ #9 Config      │                │
                 ├────────────────┼────────────────│
 Baixo Impacto   │ #10 Docs       │                │
@@ -401,7 +356,6 @@ Baixo Impacto   │ #10 Docs       │                │
 ```bash
 # #4 - Funcionalidades Duplicadas
 # #5 - Arquitetura Fragmentada
-# #7 - Testes Inconsistentes
 ```
 **Objetivo**: Arquitetura limpa e confiável
 
@@ -426,7 +380,7 @@ Baixo Impacto   │ #10 Docs       │                │
 
 ### **Ordem de Segurança**:
 1. **Mais seguro**: #1, #10 (baixo risco de quebrar)
-2. **Médio risco**: #4, #7, #9 (testar bem)
+2. **Médio risco**: #4, #9 (testar bem)
 3. **Alto risco**: #2, #3, #5, #6, #8 (mudanças estruturais grandes)
 
 ### **Validação Necessária**:
@@ -434,12 +388,13 @@ Baixo Impacto   │ #10 Docs       │                │
 # Após cada mudança:
 docker-compose up --build -d
 curl http://localhost:8000/system/health
-docker-compose exec api python -m pytest tests/ -v
+docker-compose exec api python -m pytest tests/integration/test_user_journey_simple.py -v -s
+docker-compose exec api python -m pytest tests/test_unified_validation.py -v
+docker-compose exec api python -m pytest tests/test_health.py -v
 ```
 
 ---
 
-*Documento criado em: 2025-01-21*  
-*Última atualização: 2025-07-22 - TD #4 TIME EXTRACTION resolvido*  
+*Documento atualizado em: 2025-07-22*  
 *Baseado em análise completa do código atual*  
 *Organizado para execução via Cursor/Claude Code*
