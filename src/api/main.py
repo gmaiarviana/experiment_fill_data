@@ -4,6 +4,7 @@ from fastapi.responses import JSONResponse
 from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequest, EntityExtractionResponse, ValidationRequest, ValidationResponse
 from src.api.routers.system import router as system_router
 from src.api.routers.chat import router as chat_router
+from src.api.routers.extract import router as extract_router
 # Imports moved to container for centralized management
 from src.core.validation.normalizers.data_normalizer import DataNormalizer
 from src.core.logging.logger_factory import get_logger
@@ -34,6 +35,7 @@ logger.info("✅ FastAPI app criada - main.py executando")
 # Include routers
 app.include_router(system_router)
 app.include_router(chat_router)
+app.include_router(extract_router)
 
 # Configure CORS middleware with centralized settings
 settings = get_settings()
@@ -108,94 +110,6 @@ async def root():
         "message": "Data Structuring Agent API",
         "status": "running"
     }
-
-
-@app.post("/extract/entities")
-async def extract_entities(request: Request) -> EntityExtractionResponse:
-    """Entity extraction endpoint with detailed logging and validation"""
-    logger.info("=== INÍCIO: Endpoint /extract/entities ===")
-    
-    try:
-        # Log request details
-        logger.info(f"Content-Type: {request.headers.get('content-type', 'N/A')}")
-        logger.info(f"Content-Length: {request.headers.get('content-length', 'N/A')}")
-        
-        # Read raw body for debugging
-        body_bytes = await request.body()
-        logger.info(f"Raw body length: {len(body_bytes)} bytes")
-        
-        # Try to decode as UTF-8
-        try:
-            body_text = body_bytes.decode('utf-8')
-            logger.info(f"Body decoded as UTF-8: {body_text[:200]}...")
-        except UnicodeDecodeError as e:
-            logger.error(f"Erro de encoding UTF-8: {e}")
-            raise HTTPException(status_code=400, detail="Invalid UTF-8 encoding in request body")
-        
-        # Parse JSON
-        try:
-            body_json = json.loads(body_text)
-            logger.info(f"JSON parsed successfully: {json.dumps(body_json, ensure_ascii=False)[:200]}...")
-        except json.JSONDecodeError as e:
-            logger.error(f"Erro ao fazer parse do JSON: {e}")
-            raise HTTPException(status_code=400, detail="Invalid JSON format")
-        
-        # Validate with Pydantic using specific schema
-        try:
-            extraction_request = EntityExtractionRequest(**body_json)
-            logger.info(f"EntityExtractionRequest validado com sucesso: message='{extraction_request.message[:50]}...'")
-        except Exception as e:
-            logger.error(f"Erro na validação Pydantic: {e}")
-            raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
-        
-        # Process entity extraction
-        entity_extractor = get_entity_extractor()
-        if entity_extractor is None:
-            logger.warning("Entity Extractor não disponível")
-            return EntityExtractionResponse(
-                success=False,
-                error="Serviço de extração não está disponível no momento"
-            )
-        
-        # Extract entities using the entity extractor
-        result = await entity_extractor.extract_consulta_entities(extraction_request.message)
-        logger.info("Extração de entidades realizada com sucesso")
-        
-        # Log the complete result for debugging
-        logger.info(f"Result completo: {json.dumps(result, ensure_ascii=False, indent=2)}")
-        
-        # Convert result to EntityExtractionResponse
-        if isinstance(result, dict) and result.get("success", False):
-            response = EntityExtractionResponse(
-                success=True,
-                entities=result.get("extracted_data"),  # Mapeia extracted_data → entities
-                confidence_score=result.get("confidence_score"),
-                missing_fields=result.get("missing_fields"),
-                suggested_questions=result.get("suggested_questions"),
-                is_complete=result.get("is_complete"),
-                timestamp=datetime.utcnow()
-            )
-            logger.info(f"Response mapeada: success={response.success}, entities_keys={list(response.entities.keys()) if response.entities else None}, confidence={response.confidence_score}")
-        else:
-            response = EntityExtractionResponse(
-                success=False,
-                error=result.get("error", "Erro desconhecido na extração") if isinstance(result, dict) else str(result)
-            )
-            logger.info(f"Response de erro: {response.error}")
-        
-        logger.info("=== FIM: Endpoint /extract/entities - Sucesso ===")
-        return response
-        
-    except HTTPException:
-        logger.error("=== FIM: Endpoint /extract/entities - HTTPException ===")
-        raise
-    except Exception as e:
-        logger.error(f"Erro inesperado ao extrair entidades: {e}")
-        logger.error("=== FIM: Endpoint /extract/entities - Erro ===")
-        return EntityExtractionResponse(
-            success=False,
-            error=f"Erro ao processar extração: {str(e)}"
-        )
 
 
 @app.post("/validate")
