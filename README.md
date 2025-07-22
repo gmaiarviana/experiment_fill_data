@@ -669,3 +669,20 @@ docker-compose exec api python -m pytest tests/test_health.py -v
 - Debugging visual em tempo real para validação do sistema
 - Transparência total para demonstração e otimização
 - MVP focado em funcionalidade e visibilidade, não complexidade visual
+
+## ⚡️ Feature Toggle: Validação 100% LLM (Experimental)
+
+O endpoint `/chat/message` suporta um modo experimental onde toda a extração e validação é feita diretamente pelo LLM, sem passar pelos validadores Python ou ReasoningCoordinator.
+
+- Para ativar, defina a variável de ambiente:
+  
+  ```bash
+  USE_FULL_LLM_VALIDATION=true
+  ```
+- Por padrão, o pipeline tradicional é usado.
+- Quando ativado, o backend delega toda a lógica ao LLM e retorna a resposta estruturada conforme o prompt.
+- Útil para experimentação, benchmarking e simplificação do fluxo.
+
+**Atenção:**
+- O formato de resposta depende do prompt do LLM.
+- Use os testes automatizados para validar regressões.

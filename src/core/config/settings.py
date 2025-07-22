@@ -51,6 +51,9 @@ class ExtendedSettings(BaseSettings):
         # Application URLs
         self.BASE_URL = f"http://{self.HOST}:{self.PORT}"
         
+        # Feature toggle para validação 100% LLM
+        self.USE_FULL_LLM_VALIDATION = os.getenv("USE_FULL_LLM_VALIDATION", "false").lower() in ("1", "true", "yes")
+        
         # Validate extended fields
         self._validate_timeouts()
         self._validate_schema_limits()
