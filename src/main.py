@@ -130,7 +130,8 @@ async def test_chat_conversation(messages: List[str], session_id: Optional[str] 
         import requests
         import time
         
-        base_url = "http://localhost:8000"
+        settings = get_settings()
+        base_url = settings.BASE_URL
         
         for i, message in enumerate(messages, 1):
             print(f"--- Message {i}/{len(messages)} ---")

@@ -13,14 +13,15 @@ class OpenAIClient:
         """
         Inicializa o cliente OpenAI usando configuração centralizada.
         """
-        # Get centralized settings
+        # Get centralized settings with all configurations
         settings = get_settings()
         
         self.api_key = settings.OPENAI_API_KEY
         self.model = settings.OPENAI_MODEL
         self.max_tokens = settings.OPENAI_MAX_TOKENS
+        self.timeout = settings.OPENAI_TIMEOUT
         self.system_prompt = "Você é um assistente conversacional amigável. Responda de forma natural e útil."
-        self.api_url = "https://api.openai.com/v1/chat/completions"
+        self.api_url = settings.OPENAI_API_URL
     
     async def chat_completion(self, message: str, system_prompt: str = None) -> str:
         """
@@ -55,7 +56,7 @@ class OpenAIClient:
                 self.api_url,
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=self.timeout
             )
             
             response.raise_for_status()
@@ -111,7 +112,7 @@ class OpenAIClient:
                 self.api_url,
                 headers=headers,
                 json=data,
-                timeout=30
+                timeout=self.timeout
             )
             
             response.raise_for_status()

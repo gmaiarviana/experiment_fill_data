@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
-import os
 import asyncio
 from datetime import datetime
 from typing import Dict, Literal
 
 from src.api.schemas.system import HealthResponse
+from src.core.config import get_settings
 
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -13,9 +13,7 @@ router = APIRouter(prefix="/system", tags=["system"])
 async def check_postgres_connection() -> Literal["healthy", "unhealthy"]:
     """Verifica conexão com PostgreSQL"""
     try:
-        database_url = os.getenv("DATABASE_URL")
-        if not database_url:
-            return "unhealthy"
+        settings = get_settings()
         
         # Import asyncpg apenas se necessário
         import asyncpg
@@ -23,8 +21,8 @@ async def check_postgres_connection() -> Literal["healthy", "unhealthy"]:
         # Extrair parâmetros da URL
         # Formato esperado: postgresql://user:password@host:port/database
         conn = await asyncio.wait_for(
-            asyncpg.connect(database_url),
-            timeout=5.0
+            asyncpg.connect(settings.DATABASE_URL),
+            timeout=settings.DB_CONNECTION_TIMEOUT
         )
         await conn.close()
         return "healthy"

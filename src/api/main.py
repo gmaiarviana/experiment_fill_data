@@ -33,15 +33,11 @@ logger.info("✅ FastAPI app criada - main.py executando")
 # Include routers
 app.include_router(system_router)
 
-# Configure CORS middleware
+# Configure CORS middleware with centralized settings
+settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5678", 
-        "http://localhost:8000",
-        "http://localhost:3001",  # Adicionado para permitir frontend React
-    ],
+    allow_origins=settings.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
