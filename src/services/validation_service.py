@@ -124,8 +124,8 @@ class ValidationService:
                     "field_value": field_value,
                     "field_type": field_type,
                     "is_valid": validation_result.is_valid,
-                    "normalized_value": validation_result.normalized_value,
-                    "error_message": validation_result.error_message,
+                    "normalized_value": validation_result.value,
+                    "error_message": validation_result.errors[0] if validation_result.errors else None,
                     "confidence": validation_result.confidence
                 }
             else:
@@ -187,14 +187,15 @@ class ValidationService:
                     validation_result = validator.validate(field_value)
                     field_validations[field_name] = {
                         "is_valid": validation_result.is_valid,
-                        "normalized_value": validation_result.normalized_value,
-                        "error_message": validation_result.error_message,
+                        "normalized_value": validation_result.value,
+                        "error_message": validation_result.errors[0] if validation_result.errors else None,
                         "confidence": validation_result.confidence,
                         "field_type": field_type
                     }
                     
                     if not validation_result.is_valid:
-                        errors.append(f"{field_name}: {validation_result.error_message}")
+                        error_msg = validation_result.errors[0] if validation_result.errors else "Validation failed"
+                        errors.append(f"{field_name}: {error_msg}")
                     elif validation_result.confidence < 0.8:
                         warnings.append(f"{field_name}: Low confidence ({validation_result.confidence:.2f})")
         
