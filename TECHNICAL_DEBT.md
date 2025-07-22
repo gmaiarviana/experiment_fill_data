@@ -56,6 +56,34 @@ Este documento cataloga o Technical Debt identificado no sistema Data Structurin
 
 ---
 
+### **1.1 Finalizar Migração para Sistema de Validação Unificado**
+
+**Problema**: Módulos legados ainda usam sistema antigo de validação
+- `src/services/consultation_service.py` - Usa `from src.core.data_normalizer import`
+- `src/core/reasoning_engine.py` - Usa `from src.core.data_normalizer import`
+- `src/api/main.py` - Usa `from src.core.data_normalizer import`
+- Arquivos antigos `validators.py` e `data_normalizer.py` mantidos para compatibilidade
+
+**Impacto**:
+- Coexistência de dois sistemas de validação no código
+- Potencial inconsistência entre validações antigas e novas
+- Arquivos legados ocupando espaço e causando confusão
+- Debt técnico acumulado em módulos não migrados
+
+**Solução Proposta**:
+```python
+# Migrar módulos restantes:
+1. consultation_service.py → usar DataNormalizer unificado
+2. reasoning_engine.py → usar ValidationOrchestrator  
+3. api/main.py → usar sistema novo para validações
+4. Remover validators.py e data_normalizer.py antigos
+```
+
+**Esforço**: 1-2 sprints
+**Benefício**: Eliminação completa do sistema legado, consistência total
+
+---
+
 ### **2. Arquitetura de Serviços Fragmentada**
 
 **Problema**: Lógica de negócio espalhada em componentes monolíticos
