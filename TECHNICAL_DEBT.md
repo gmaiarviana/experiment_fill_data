@@ -110,66 +110,22 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#4 - ESTRUTURA DE ARQUIVOS CONFUSA**
-**🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
+## 🔶 MÉDIO - Melhoria de Qualidade e Performance
 
-**Problemas de Organização**:
-
-#### **Arquivos Muito Grandes**:
-```python
-src/api/main.py                          # 673 linhas - endpoints + lógica (PIOROU)
-src/core/entity_extraction.py           # 447 linhas - múltiplas responsabilidades
-src/core/reasoning/response_composer.py # 613 linhas - consolidado mas ainda complexo
-✅ REMOVIDO: src/core/reasoning_engine.py     # Foi removido em sessões anteriores
-```
-
-#### **Estrutura Inconsistente**:
-```python
-# Mistura de padrões:
-src/core/validation/              # Modular ✅
-src/core/reasoning/              # Modular ✅  
-src/core/logging/                # Modular ✅
-src/core/*.py                    # Monolítico ❌
-```
-
-**Reorganização Recomendada**:
-```python
-src/
-├── api/
-│   ├── endpoints/              # Dividir main.py
-│   │   ├── chat.py
-│   │   ├── validation.py
-│   │   └── sessions.py
-│   ├── middleware/
-│   └── schemas/
-├── services/                   # Expandir services
-│   ├── chat/
-│   ├── extraction/
-│   └── validation/
-└── core/                      # Manter apenas utilities
-    ├── validation/            # ✅ Já organizado
-    ├── reasoning/             # ✅ Já organizado
-    └── logging/               # ✅ Já organizado
-```
-
----
-
-## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
-
-### **#5 - PERFORMANCE NÃO OTIMIZADA**
+### #4 - PERFORMANCE NÃO OTIMIZADA
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
 
-#### **Operações Síncronas Desnecessárias**:
-```python
+#### Operações Síncronas Desnecessárias:
+```
 # Múltiplas chamadas LLM sequenciais
 # Validações redundantes executadas múltiplas vezes
 # Falta de cache para validações repetitivas
 ```
 
-#### **Instâncias Duplicadas**:
-```python
+#### Instâncias Duplicadas:
+```
 # reasoning_engine.py cria:
 self.question_generator = QuestionGenerator()
 self.data_summarizer = DataSummarizer()
@@ -181,8 +137,8 @@ self.conversation_flow = ConversationFlow()  # Funcionalidade similar
 self.response_composer = ResponseComposer()  # Funcionalidade similar
 ```
 
-#### **Queries N+1 e Falta de Connection Pooling**:
-```python
+#### Queries N+1 e Falta de Connection Pooling:
+```
 # Repository pattern sem otimizações
 # Conexões de banco não reutilizadas
 # Falta de batch operations
@@ -197,26 +153,9 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-### **#4 - COBERTURA DE TESTES UNITÁRIOS PARA ROUTERS/ENDPOINTS (NOVO)
-**🎯 Impacto**: Refatoração estrutural facilita granularidade de testes, mas cobertura unitária por router ainda é limitada
+## 🔵 BAIXO - Melhoria de Experiência do Desenvolvedor
 
-**Problema**: Testes de integração cobrem fluxos principais, mas não há testes unitários dedicados para cada router/endpoint
-
-**Ação Recomendada**:
-- Adicionar testes unitários FastAPI/TestClient para cada router
-- Cobrir casos de erro, edge cases e respostas HTTP específicas
-- Garantir que mudanças em um router não afetem outros
-
-**Benefícios**:
-- Detecção precoce de regressões
-- Feedback rápido para refatorações
-- Base para TDD incremental
-
----
-
-## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
-
-### **#6 - DOCUMENTAÇÃO INSUFICIENTE**
+### #5 - DOCUMENTAÇÃO INSUFICIENTE
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -227,7 +166,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 - Decisões arquiteturais não documentadas
 
 **Documentação Necessária**:
-```python
+```
 # API Documentation:
 # - OpenAPI specs para todos endpoints
 # - Exemplos de request/response
