@@ -307,7 +307,6 @@ Resposta: {
             
             # Tenta parsear como JSON, se falhar, retorna resposta estruturada de fallback
             try:
-                import json
                 parsed_response = json.loads(llm_response)
                 return llm_response
             except json.JSONDecodeError:
