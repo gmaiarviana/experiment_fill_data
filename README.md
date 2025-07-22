@@ -21,7 +21,7 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **FastAPI**: API REST para endpoints + WebSocket/SSE para chat
 - **SQLAlchemy**: ORM para persistência de dados
 - **PostgreSQL**: Banco de dados principal (via Docker)
-- **OpenAI API**: LLM para conversação via requests HTTP (estável)
+- **OpenAI API**: LLM para conversação via cliente oficial OpenAI (estável)
 - **Reasoning System**: Sistema modular de raciocínio (ResponseComposer, ConversationFlow, LLMStrategist)
 - **Docker Compose**: Containerização completa
 
@@ -36,6 +36,7 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 - **Pydantic**: Validação e serialização de dados estruturados
 - **python-multipart**: Upload de arquivos e dados multipart
 - **asyncio**: Processamento assíncrono para chat streaming
+- **requests**: Requisições HTTP auxiliares
 
 ### **Sistema de Validação Unificado** ✨
 - **ValidationOrchestrator**: Coordenação centralizada de validações
@@ -263,23 +264,36 @@ src/
 │       └── functions.py      # Function calling definitions
 ├── models/                    # SQLAlchemy models
 │   ├── consulta.py           # Modelo principal Consulta
-│   ├── session.py            # Sessões de chat
+│   ├── chat_session.py       # Sessões de chat
 │   └── extraction_log.py     # Log de extrações para debugging
 ├── repositories/              # Padrão Repository (CRUD)
-│   ├── consulta_repository.py
-│   └── session_repository.py
+│   ├── base_repository.py     # Repository base abstrato
+│   └── consulta_repository.py # Repository de consultas
 ├── services/                  # Lógica de negócio
+│   ├── chat_service.py        # Serviço de chat conversacional
 │   ├── consultation_service.py  # Orquestração completa
-│   └── data_structure_service.py # Transformação de dados
+│   ├── extraction_service.py  # Extração de entidades
+│   ├── session_service.py     # Gerenciamento de sessões
+│   └── validation_service.py  # Validação de dados
 ├── core/                      # Configuração e utils
 │   ├── config.py             # Settings via environment
 │   ├── database.py           # Conexão PostgreSQL
-│   ├── logging.py            # Setup do Loguru
-│   ├── validators.py         # Validação de dados brasileiros
-│   ├── data_normalizer.py    # Normalização e formatação de dados
-│   ├── question_generator.py # Geração de perguntas contextuais
+│   ├── container.py          # ServiceContainer para DI
+│   ├── openai_client.py      # Cliente OpenAI
+│   ├── entity_extraction.py  # Extração de entidades
 │   ├── data_summarizer.py    # Sumarização e análise de dados
-│   └── conversation_manager.py # Gestão de estado da conversa
+│   ├── logging/              # Sistema de logging estruturado
+│   │   └── logger_factory.py # Factory de loggers JSON
+│   ├── reasoning/            # Sistema modular de raciocínio
+│   │   ├── reasoning_coordinator.py
+│   │   ├── conversation_flow.py
+│   │   ├── response_composer.py
+│   │   ├── llm_strategist.py
+│   │   └── fallback_handler.py
+│   └── validation/           # Sistema de validação unificado
+│       ├── validation_orchestrator.py
+│       ├── validators/       # Validadores específicos
+│       └── normalizers/      # Normalizadores de dados
 └── main.py                    # Entry point CLI (para testes)
 
 ### **Frontend React (Etapa 4)**
@@ -287,10 +301,9 @@ src/
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── ChatPanel.tsx          # Interface de chat responsiva
-│   │   ├── ReasoningPanel.tsx     # Debug do reasoning loop
-│   │   ├── DataPanel.tsx          # Dados estruturados em tempo real
-│   │   └── Layout.tsx             # Layout de 3 colunas responsivo
+│   │   ├── ChatInterface.tsx           # Interface de chat responsiva
+│   │   ├── ReasoningDebugPanel.tsx     # Debug do reasoning loop
+│   │   └── StructuredDataPanel.tsx     # Dados estruturados em tempo real
 │   ├── hooks/
 │   │   └── useAgentDebug.ts       # Hook para debug do agente
 │   ├── services/
