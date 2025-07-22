@@ -2,6 +2,9 @@ import requests
 import json
 from typing import Dict, Any, Optional
 from src.core.config import get_settings
+from src.core.logging.logger_factory import get_logger
+
+logger = get_logger(__name__)
 
 
 class OpenAIClient:
@@ -123,6 +126,7 @@ class OpenAIClient:
             
             if "function_call" in message_response:
                 function_args = json.loads(message_response["function_call"]["arguments"])
+                logger.info(f"OpenAI raw function_args: {function_args}")
                 
                 # Calcula confidence score baseado na completude dos dados
                 total_fields = len(function_schema["parameters"]["properties"])

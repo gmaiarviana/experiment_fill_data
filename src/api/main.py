@@ -146,8 +146,16 @@ async def chat_message(request: Request) -> ChatResponse:
             logger.error(f"Erro na validação Pydantic: {e}")
             raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
         
-        # Generate session ID if not provided in request
-        session_id = body_json.get("session_id", str(uuid.uuid4()))
+        # Generate session ID if not provided in request - always use proper UUID format
+        session_id = body_json.get("session_id")
+        if not session_id:
+            session_id = str(uuid.uuid4())
+        elif not session_id.startswith("session_"):
+            # If session_id provided but not in UUID format, keep as is (assume it's already UUID)
+            pass
+        else:
+            # Convert custom session format to proper UUID
+            session_id = str(uuid.uuid4())
         
         # Get or create session context
         if session_id not in sessions:
@@ -202,8 +210,12 @@ async def chat_message(request: Request) -> ChatResponse:
                 # Extract response components
                 action = result.get("action", "unknown")
                 response_text = result.get("response", "Desculpe, não consegui processar sua mensagem.")
-                extracted_data = result.get("extracted_data", {})  # CORRIGIDO: era "data", agora "extracted_data"
+                extracted_data_raw = result.get("extracted_data", {})  # Raw data from reasoning engine
                 confidence = result.get("confidence", 0.0)
+                logger.info(f"Raw extracted_data from reasoning engine: {extracted_data_raw}")
+                
+                # Data already comes in English from reasoning engine
+                extracted_data = extracted_data_raw.copy()  # Use data as-is
                 
                 # Log reasoning results
                 logger.info(f"ReasoningEngine resultado - Ação: {action}, Confidence: {confidence:.2f}")
