@@ -5,6 +5,7 @@ from src.api.schemas.chat import ChatRequest, ChatResponse, EntityExtractionRequ
 from src.api.routers.system import router as system_router
 from src.api.routers.chat import router as chat_router
 from src.api.routers.extract import router as extract_router
+from src.api.routers.validate import router as validate_router
 # Imports moved to container for centralized management
 from src.core.validation.normalizers.data_normalizer import DataNormalizer
 from src.core.logging.logger_factory import get_logger
@@ -36,6 +37,7 @@ logger.info("✅ FastAPI app criada - main.py executando")
 app.include_router(system_router)
 app.include_router(chat_router)
 app.include_router(extract_router)
+app.include_router(validate_router)
 
 # Configure CORS middleware with centralized settings
 settings = get_settings()
@@ -110,121 +112,6 @@ async def root():
         "message": "Data Structuring Agent API",
         "status": "running"
     }
-
-
-@app.post("/validate")
-async def validate_data(request: Request) -> ValidationResponse:
-    """Validation endpoint with detailed logging and error handling"""
-    logger.info("=== INÍCIO: Endpoint /validate ===")
-    
-    try:
-        # Log request details
-        logger.info(f"Content-Type: {request.headers.get('content-type', 'N/A')}")
-        logger.info(f"Content-Length: {request.headers.get('content-length', 'N/A')}")
-        
-        # Read raw body for debugging
-        body_bytes = await request.body()
-        logger.info(f"Raw body length: {len(body_bytes)} bytes")
-        
-        # Try to decode as UTF-8
-        try:
-            body_text = body_bytes.decode('utf-8')
-            logger.info(f"Body decoded as UTF-8: {body_text[:200]}...")
-        except UnicodeDecodeError as e:
-            logger.error(f"Erro de encoding UTF-8: {e}")
-            return ValidationResponse(
-                success=False,
-                normalized_data={},
-                validation_errors=[f"Invalid UTF-8 encoding in request body: {str(e)}"],
-                confidence_score=0.0
-            )
-        
-        # Parse JSON
-        try:
-            body_json = json.loads(body_text)
-            logger.info(f"JSON parsed successfully: {json.dumps(body_json, ensure_ascii=False)[:200]}...")
-        except json.JSONDecodeError as e:
-            logger.error(f"Erro ao fazer parse do JSON: {e}")
-            return ValidationResponse(
-                success=False,
-                normalized_data={},
-                validation_errors=[f"Invalid JSON format: {str(e)}"],
-                confidence_score=0.0
-            )
-        
-        # Validate with Pydantic
-        try:
-            validation_request = ValidationRequest(**body_json)
-            logger.info(f"ValidationRequest validado com sucesso: domain='{validation_request.domain}', data_keys={list(validation_request.data.keys()) if validation_request.data else None}")
-        except Exception as e:
-            logger.error(f"Erro na validação Pydantic: {e}")
-            return ValidationResponse(
-                success=False,
-                normalized_data={},
-                validation_errors=[f"Validation error: {str(e)}"],
-                confidence_score=0.0
-            )
-        
-        # Process validation using unified normalizer
-        try:
-            logger.info(f"Usando DataNormalizer unificado para domínio '{validation_request.domain}'")
-            normalization_result = data_normalizer.normalize_consultation_data(validation_request.data)
-            
-            # Convert to expected format for backward compatibility  
-            validation_errors = []
-            for field_result in normalization_result.validation_summary.field_results.values():
-                if field_result.errors:
-                    validation_errors.extend(field_result.errors)
-            
-            result = {
-                "normalized_data": normalization_result.normalized_data,
-                "validation_errors": validation_errors,
-                "confidence_score": normalization_result.confidence_score,
-                "field_mapping_info": normalization_result.field_mapping_info,
-                "success": normalization_result.success
-            }
-            
-            logger.info("Validação realizada com sucesso")
-            logger.info(f"Result completo: {json.dumps(result, ensure_ascii=False, indent=2)}")
-            
-            # Extract data from result
-            normalized_data = result.get("normalized_data", {}) if validation_request.domain == "consulta" else result.get("normalized_entities", {})
-            validation_errors = result.get("validation_errors", [])
-            confidence_score = result.get("confidence_score", 0.0)
-            
-            # Determine success based on confidence score and errors
-            success = confidence_score > 0.0 and len(validation_errors) == 0
-            
-            response = ValidationResponse(
-                success=success,
-                normalized_data=normalized_data,
-                validation_errors=validation_errors,
-                confidence_score=confidence_score
-            )
-            
-            logger.info(f"Response criada: success={response.success}, confidence={response.confidence_score}, errors_count={len(response.validation_errors)}")
-            
-        except Exception as e:
-            logger.error(f"Erro durante a normalização: {e}")
-            return ValidationResponse(
-                success=False,
-                normalized_data={},
-                validation_errors=[f"Erro durante a normalização: {str(e)}"],
-                confidence_score=0.0
-            )
-        
-        logger.info("=== FIM: Endpoint /validate - Sucesso ===")
-        return response
-        
-    except Exception as e:
-        logger.error(f"Erro inesperado ao processar validação: {e}")
-        logger.error("=== FIM: Endpoint /validate - Erro ===")
-        return ValidationResponse(
-            success=False,
-            normalized_data={},
-            validation_errors=[f"Erro inesperado: {str(e)}"],
-            confidence_score=0.0
-        )
 
 
 @app.get("/sessions/{session_id}")
