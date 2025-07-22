@@ -42,6 +42,16 @@ class LLMStrategist:
 
             # Detecta intenção do usuário antes de reasoning completo
             user_intent = self._detect_user_intent(message, context)
+            # NOVO: Se intenção for reschedule ou cancel, retorna imediatamente
+            if user_intent in ["reschedule", "cancel"]:
+                logger.info(f"Intenção especial detectada: {user_intent}")
+                return {
+                    "action": user_intent,
+                    "reason": f"Intenção detectada: {user_intent}",
+                    "confidence": 0.95,
+                    "response": None,
+                    "missing_fields": []
+                }
             if self._should_skip_extraction(user_intent):
                 logger.info(f"Extração pulada devido à intenção detectada: {user_intent}")
                 return {
@@ -91,7 +101,7 @@ class LLMStrategist:
 
 ANÁLISE NECESSÁRIA:
 1. Identifique se a mensagem contém dados para extração (nome, telefone, data, horário, tipo de consulta)
-2. Avalie se é uma confirmação, negação, correção, dados novos ou pergunta de detalhes
+2. Avalie se é uma confirmação, negação, correção, reagendamento, cancelamento, dados novos ou pergunta de detalhes
 3. Considere o contexto da conversa, dados já coletados e intenção detectada: {user_intent}
 4. Evite perguntar por dados já confirmados ou repetir perguntas desnecessárias
 5. Decida a ação mais apropriada
@@ -102,13 +112,15 @@ AÇÕES POSSÍVEIS:
 - "confirm": Solicitar confirmação (quando dados parecem completos ou usuário confirma)
 - "complete": Finalizar agendamento (quando tudo está confirmado)
 - "correction": Usuário corrigiu dado já informado
+- "reschedule": Usuário deseja reagendar uma consulta existente
+- "cancel": Usuário deseja cancelar uma consulta existente
 - "invalid": Mensagem não relacionada ao domínio médico/agendamento
 - "clarify": Mensagem ambígua que precisa esclarecimento
 - "error": Erro técnico no processamento (use apenas para erros reais)
 
 RESPONDA APENAS COM JSON válido no formato:
 {{
-    "action": "extract|ask|confirm|complete|correction|invalid|clarify|error",
+    "action": "extract|ask|confirm|complete|correction|reschedule|cancel|invalid|clarify|error",
     "reason": "explicação da decisão",
     "confidence": 0.0-1.0,
     "response": "resposta para o usuário (se aplicável)",
@@ -151,12 +163,18 @@ RESPONDA APENAS COM JSON válido no formato:
 
     def _detect_user_intent(self, message: str, context: Dict[str, Any]) -> str:
         """
-        Detecta intenção do usuário: confirmação, correção, dados_novos, pergunta_detalhes, negação.
+        Detecta intenção do usuário: confirmação, correção, reagendamento, cancelamento, dados_novos, pergunta_detalhes, negação.
         """
         msg = message.strip().lower()
         # Confirmação
         if re.match(r"^(sim|isso|correto|ok|perfeito|confirmado|está certo|isso mesmo)[.! ]*$", msg):
             return "confirm"
+        # Cancelamento
+        if any(word in msg for word in ["cancelar", "cancela", "desmarcar", "desmarca", "quero cancelar", "preciso cancelar", "cancele", "cancela minha consulta"]):
+            return "cancel"
+        # Reagendamento
+        if any(word in msg for word in ["reagendar", "remarcar", "mudar horário", "alterar horário", "quero remarcar", "quero reagendar", "preciso remarcar", "preciso reagendar"]):
+            return "reschedule"
         # Negação
         if re.match(r"^(não|nao|negativo|errado|incorreto|nunca|jamais)[.! ]*$", msg):
             return "deny"

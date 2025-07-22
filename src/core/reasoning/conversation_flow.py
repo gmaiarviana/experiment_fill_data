@@ -186,13 +186,12 @@ class ConversationFlow:
         # Atualiza dados extraídos se houver
         if extract_result and extract_result.get("extracted_data"):
             extracted_data = extract_result["extracted_data"]
-            if isinstance(extracted_data, dict) and "normalized_data" in extracted_data:
-                normalized_data = extracted_data["normalized_data"]
-                context["extracted_data"].update(normalized_data)
-                logger.info(f"Contexto atualizado com dados normalizados: {list(normalized_data.keys())}")
-            else:
-                context["extracted_data"].update(extracted_data)
-                logger.info(f"Contexto atualizado com dados diretos: {list(extracted_data.keys())}")
+            for key, value in extracted_data.items():
+                if value is not None and value != "":
+                    context["extracted_data"][key] = value
+                elif key not in context["extracted_data"]:
+                    context["extracted_data"][key] = value
+            logger.info(f"Contexto atualizado (merge) com dados: {list(extracted_data.keys())}")
 
         # Atualiza métricas de confidence
         confidence = act_result.get("confidence", 0.0)

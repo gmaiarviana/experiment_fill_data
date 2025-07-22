@@ -151,6 +151,12 @@ class ResponseComposer:
                 return await self._compose_confirm_response(think_result, context)
             elif action == "complete":
                 return await self._compose_complete_response(think_result, context)
+            elif action == "reschedule":
+                return await self._compose_reschedule_response(think_result, context)
+            elif action == "cancel":
+                return await self._compose_cancel_response(think_result, context)
+            elif action == "correction":
+                return await self._compose_correction_response(think_result, context)
             elif action == "error":
                 return self._compose_error_response(think_result)
             else:
@@ -612,3 +618,48 @@ class ResponseComposer:
         """Consolidado do QuestionGenerator"""
         summary = self.generate_data_summary(extracted_data)
         return self.generate_contextual_question("summary_before_confirm", summary=summary) if "summary_before_confirm" in self.context_templates else f"Resumo: {summary}. Posso confirmar?" 
+
+    async def _compose_reschedule_response(self, think_result: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compõe resposta para ação de reagendamento.
+        """
+        response = (
+            "Entendi, você deseja reagendar uma consulta. "
+            "Por favor, informe o nome do paciente e, se possível, a data ou telefone da consulta que deseja reagendar."
+        )
+        return {
+            "action": "reschedule",
+            "response": response,
+            "confidence": think_result.get("confidence", 0.8),
+            "extracted_data": context.get("extracted_data", {})
+        }
+
+    async def _compose_cancel_response(self, think_result: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compõe resposta para ação de cancelamento.
+        """
+        response = (
+            "Entendi, você deseja cancelar uma consulta. "
+            "Por favor, informe o nome do paciente e, se possível, a data ou telefone da consulta que deseja cancelar."
+        )
+        return {
+            "action": "cancel",
+            "response": response,
+            "confidence": think_result.get("confidence", 0.8),
+            "extracted_data": context.get("extracted_data", {})
+        }
+
+    async def _compose_correction_response(self, think_result: Dict[str, Any], context: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compõe resposta para ação de correção de dados.
+        """
+        response = (
+            "Entendi, você deseja corrigir algum dado informado anteriormente. "
+            "Por favor, informe o dado correto para que eu possa atualizar as informações."
+        )
+        return {
+            "action": "correction",
+            "response": response,
+            "confidence": think_result.get("confidence", 0.8),
+            "extracted_data": context.get("extracted_data", {})
+        } 
