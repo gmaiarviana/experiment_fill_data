@@ -12,7 +12,7 @@ import uuid
 
 # Adicionar o diretório src ao path para importar os módulos
 # Dentro do container, o src está no diretório raiz
-sys.path.insert(0, '/app/src')
+sys.path.insert(0, '/app')
 
 
 def test_consulta_repository_import():
@@ -120,21 +120,21 @@ def test_consulta_repository_type_hints():
     try:
         from src.repositories.consulta_repository import ConsultaRepository
         from src.models.consulta import Consulta
-        from typing import get_type_hints
-        
+        from typing import get_type_hints, List
+
         # Verificar type hints dos métodos principais
         hints = get_type_hints(ConsultaRepository.find_by_session)
-        assert hints['return'] == 'List[Consulta]', "find_by_session deve retornar List[Consulta]"
-        
+        assert hints['return'] == List[Consulta], "find_by_session deve retornar List[Consulta]"
+
         hints = get_type_hints(ConsultaRepository.find_by_status)
-        assert hints['return'] == 'List[Consulta]', "find_by_status deve retornar List[Consulta]"
-        
+        assert hints['return'] == List[Consulta], "find_by_status deve retornar List[Consulta]"
+
         hints = get_type_hints(ConsultaRepository.find_pending)
-        assert hints['return'] == 'List[Consulta]', "find_pending deve retornar List[Consulta]"
-        
+        assert hints['return'] == List[Consulta], "find_pending deve retornar List[Consulta]"
+
         print("✅ Type hints verificados")
         assert True
-        
+
     except Exception as e:
         print(f"❌ Erro ao verificar type hints: {e}")
         assert False
