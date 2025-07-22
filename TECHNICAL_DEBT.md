@@ -75,32 +75,23 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#3 - OVERHEAD E COMPLEXIDADE DA SOLUÇÃO HÍBRIDA LLM + CÓDIGO**
-**🎯 Impacto**: Manutenção mais difícil, lógica duplicada, evolução lenta, fragmentação de responsabilidades
+### **✅ #3 - OVERHEAD E COMPLEXIDADE DA SOLUÇÃO HÍBRIDA LLM + CÓDIGO - RESOLVIDO**
+**🎯 Impacto**: ~~Manutenção mais difícil, lógica duplicada, evolução lenta, fragmentação de responsabilidades~~ **RESOLVIDO**
 
-**Problema**: O modelo híbrido atual (LLM para extração/conversação + código para validação/regras) gera:
-- Overhead de integração (serialização, orquestração)
-- Duplicidade de lógica (LLM extrai, código valida)
-- Perda de contexto entre mensagens
-- Dificuldade de evoluir prompts e regras de negócio rapidamente
+**✅ SOLUÇÃO IMPLEMENTADA**:
+- **Arquitetura de Serviços Especializada**: ChatService, ExtractionService, ValidationService
+- **Dependency Injection Centralizado**: ServiceContainer com lazy loading e singleton patterns
+- **Context Management**: SessionService integrado para continuidade entre mensagens
+- **Error Handling Robusto**: Fallbacks e tratamento de erros em toda a stack de serviços
+- **Testes Abrangentes**: 12 testes validando arquitetura, DI, error handling, integração
 
-**Root Causes**:
-- Separação artificial entre extração e validação
-- Validações críticas feitas fora do LLM
-- Glue code para manter contexto e consistência
+**Resultado**: Arquitetura limpa, manutenível e testável ✅
 
-**Ação Sugerida**:
-1. Prototipar endpoint 100% LLM (sem validadores Python)
-2. Rodar testes de jornada e validação
-3. Se qualidade for aceitável, migrar gradualmente para abordagem full LLM
+**Commits de Resolução**:
+- `c4ba6ae`: fix: resolve débito técnico #3 - melhorias na arquitetura de serviços
+- `d65d5a5`: test: adiciona testes comprehensive para service layer + fix ValidationService
 
-**Observação**: Como projeto pessoal, sem usuários ativos e com apoio de IA (Cursor/Claude), priorizar simplicidade e agilidade pode ser mais vantajoso do que controle rígido.
-
-**Benefícios Esperados**:
-- Menos código para manter
-- Evolução mais rápida
-- Menos fragmentação
-- Menos bugs de contexto
+**Data de Resolução**: 2025-07-22
 
 ---
 
