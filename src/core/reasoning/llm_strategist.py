@@ -1,10 +1,11 @@
 """
 LLMStrategist - Strategy pattern para LLM reasoning
-Gerencia estratégias de análise usando OpenAI com fallback para lógica Python.
+Versão otimizada: uma única chamada LLM para extração + validação + decisão de ação.
 """
 
 from typing import Dict, Any, List
-import re  # Adicionado para detecção de intenções
+import re
+import json
 from src.core.logging.logger_factory import get_logger
 logger = get_logger(__name__)
 from src.core.openai_client import OpenAIClient
@@ -14,7 +15,7 @@ from .fallback_handler import FallbackHandler
 class LLMStrategist:
     """
     Estrategista que usa LLM para análise inteligente de mensagens.
-    Implementa strategy pattern com fallback para lógica Python.
+    Versão otimizada: uma única chamada LLM para todo o processamento.
     """
     
     def __init__(self):
@@ -29,6 +30,7 @@ class LLMStrategist:
     async def analyze_message(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
         Analisa mensagem usando LLM reasoning com fallback.
+        Versão otimizada: uma única chamada LLM para extração + validação + decisão.
         
         Args:
             message (str): Mensagem para analisar
@@ -38,35 +40,14 @@ class LLMStrategist:
             Dict: Resultado da análise com ação decidida
         """
         try:
-            logger.debug("Executando LLM reasoning...")
+            logger.debug("Executando LLM reasoning otimizado...")
 
-            # Detecta intenção do usuário antes de reasoning completo
-            user_intent = self._detect_user_intent(message, context)
-            # NOVO: Se intenção for reschedule ou cancel, retorna imediatamente
-            if user_intent in ["reschedule", "cancel"]:
-                logger.info(f"Intenção especial detectada: {user_intent}")
-                return {
-                    "action": user_intent,
-                    "reason": f"Intenção detectada: {user_intent}",
-                    "confidence": 0.95,
-                    "response": None,
-                    "missing_fields": []
-                }
-            if self._should_skip_extraction(user_intent):
-                logger.info(f"Extração pulada devido à intenção detectada: {user_intent}")
-                return {
-                    "action": user_intent,
-                    "reason": f"Intenção detectada: {user_intent}",
-                    "confidence": 0.90,  # Reduzido para permitir mais flexibilidade
-                    "response": None,
-                    "missing_fields": []
-                }
-
-            # Tenta LLM reasoning primeiro
-            llm_result = await self._reason_with_llm(message, context, user_intent=user_intent)
+            # Tenta LLM reasoning otimizado primeiro
+            llm_result = await self._reason_with_llm_optimized(message, context)
             
-            if llm_result.get("success"):
-                return llm_result["result"]
+            # Se retornou com sucesso (tem action e não tem error), usa o resultado do LLM
+            if llm_result.get("action") and not llm_result.get("error"):
+                return llm_result
             else:
                 # Fallback para lógica Python se LLM falhar
                 logger.warning(f"LLM reasoning falhou: {llm_result.get('error')}. Usando fallback Python.")
@@ -80,126 +61,122 @@ class LLMStrategist:
                 "confidence": 0.0
             }
     
-    async def _reason_with_llm(self, message: str, context: Dict[str, Any], user_intent: str = None) -> Dict[str, Any]:
+    async def _reason_with_llm_optimized(self, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Usa OpenAI para decidir estratégia de ação baseada na mensagem e contexto.
+        Usa OpenAI para processamento completo: extração + validação + decisão de ação.
         
         Args:
             message (str): Mensagem do usuário
             context (Dict[str, Any]): Contexto da sessão
             
         Returns:
-            Dict: Resultado do reasoning com ação decidida
+            Dict: Resultado completo do processamento
         """
         try:
-            logger.info("Iniciando LLM reasoning...")
+            logger.info("Iniciando LLM reasoning otimizado...")
+            
             existing_data = context.get("extracted_data", {})
             conversation_history = context.get("conversation_history", [])
-            context_summary = self._create_context_summary_for_llm(existing_data, conversation_history, user_intent)
-            # Prompt mais inteligente, evita perguntas desnecessárias
-            system_prompt = r"""Você é um assistente especializado em agendamento de consultas médicas. Sua função é analisar mensagens e decidir a melhor ação a tomar.
+            context_summary = self._create_context_summary_for_llm(existing_data, conversation_history)
+            
+            # Prompt otimizado para processamento completo
+            system_prompt = """Você é um assistente especializado em agendamento de consultas médicas. Sua função é processar mensagens e retornar respostas estruturadas em JSON.
 
-ANÁLISE NECESSÁRIA:
-1. Identifique se a mensagem contém dados para extração (nome, telefone, data, horário, tipo de consulta)
-2. Avalie se é uma confirmação, negação, correção, reagendamento, cancelamento, dados novos ou pergunta de detalhes
-3. Considere o contexto da conversa, dados já coletados e intenção detectada: {user_intent}
-4. Evite perguntar por dados já confirmados ou repetir perguntas desnecessárias
-5. Decida a ação mais apropriada
+INSTRUÇÕES CRÍTICAS:
+1. SEMPRE retorne um JSON válido com todos os campos obrigatórios
+2. Calcule confidence_score baseado na qualidade e completude dos dados extraídos
+3. Para tipos de consulta, reconheça termos médicos em português (cardiologia, oftalmologia, dermatologia, etc.)
+4. Mantenha contexto de conversas anteriores
 
-AÇÕES POSSÍVEIS:
-- "extract": Extrair dados da mensagem (quando há informações para extrair)
-- "ask": Fazer pergunta específica (quando faltam dados)
-- "confirm": Solicitar confirmação (quando dados parecem completos ou usuário confirma)
-- "complete": Finalizar agendamento (quando tudo está confirmado)
-- "correction": Usuário corrigiu dado já informado
-- "reschedule": Usuário deseja reagendar uma consulta existente
-- "cancel": Usuário deseja cancelar uma consulta existente
-- "invalid": Mensagem não relacionada ao domínio médico/agendamento
-- "clarify": Mensagem ambígua que precisa esclarecimento
-- "error": Erro técnico no processamento (use apenas para erros reais)
+CAMPOS OBRIGATÓRIOS NO JSON:
+- action: "extract", "ask", "confirm", "complete"
+- confidence_score: 0.0 a 1.0 (baseado na qualidade dos dados)
+- extracted_data: objeto com dados extraídos
+- response: resposta natural para o usuário
+- suggested_questions: array de perguntas para completar dados
 
-RESPONDA APENAS COM JSON válido no formato:
-{{
-    "action": "extract|ask|confirm|complete|correction|reschedule|cancel|invalid|clarify|error",
-    "reason": "explicação da decisão",
-    "confidence": 0.0-1.0,
-    "response": "resposta para o usuário (se aplicável)",
-    "missing_fields": ["campo1", "campo2"] (se action=ask)
-}}""".format(user_intent=user_intent)
-            user_prompt = f"""CONTEXTO ATUAL:\n{context_summary}\n\nMENSAGEM DO USUÁRIO:\n{message}\n\nAnalise a mensagem e decida a melhor ação a tomar."""
+CÁLCULO DE CONFIDENCE_SCORE:
+- 0.9-1.0: Dados completos e válidos (nome completo, telefone válido, data/hora, tipo consulta)
+- 0.7-0.8: Dados quase completos, apenas 1-2 campos faltando
+- 0.5-0.6: Dados parciais válidos (nome + telefone, ou nome + data)
+- 0.3-0.4: Dados mínimos (apenas nome ou apenas telefone)
+- 0.1-0.2: Dados inválidos ou muito incompletos
+- 0.0: Nenhum dado extraído
+
+TIPOS DE CONSULTA RECONHECIDOS:
+- Especialidades: cardiologia, oftalmologia, dermatologia, neurologia, ortopedia, ginecologia, urologia, pediatria
+- Tipos gerais: rotina, checkup, primeira consulta, retorno, emergência
+- Termos relacionados: oftalmológica, cardiológica, dermatológica, etc.
+
+EXEMPLO DE RESPOSTA:
+{
+  "action": "extract",
+  "confidence_score": 0.85,
+  "extracted_data": {
+    "nome": "João Silva",
+    "telefone": "11999888777",
+    "data": "2025-07-23",
+    "horario": "14:00",
+    "tipo_consulta": "cardiologia"
+  },
+  "response": "Perfeito! Agendei sua consulta de cardiologia para João Silva no dia 23/07 às 14h. Telefone: (11) 99988-8777",
+  "suggested_questions": []
+}"""
+
+            user_prompt = f"""CONTEXTO ATUAL:
+{context_summary}
+
+MENSAGEM DO USUÁRIO:
+{message}
+
+Processe esta mensagem completamente e retorne o JSON estruturado."""
+
             response = await self.openai_client.chat_completion(
                 message=user_prompt,
                 system_prompt=system_prompt
             )
+            logger.info(f"[DEBUG] Resposta bruta do LLM: {response}")
             if isinstance(response, str):
                 try:
-                    import json
+                    logger.info(f"[DEBUG] Tentando parsear resposta do LLM como JSON...")
                     result = json.loads(response)
-                    if "action" in result and "confidence" in result:
-                        logger.info(f"LLM reasoning bem-sucedido: {result['action']}")
+                    logger.info(f"[DEBUG] JSON parseado com sucesso: {result}")
+                    if "action" in result and "confidence_score" in result and "extracted_data" in result:
+                        logger.info(f"LLM reasoning otimizado bem-sucedido: {result['action']}")
                         return {
-                            "success": True,
-                            "result": result
+                            "action": result["action"],
+                            "confidence": result["confidence_score"],  # Mapeia confidence_score para confidence
+                            "extracted_data": result["extracted_data"],
+                            "response": result.get("response", ""),
+                            "next_questions": result.get("suggested_questions", [])
                         }
                     else:
-                        raise ValueError("Resposta LLM não contém campos obrigatórios")
-                except (json.JSONDecodeError, ValueError) as e:
-                    logger.warning(f"Erro ao parsear resposta LLM: {str(e)}")
-                    return {
-                        "success": False,
-                        "error": f"Resposta LLM inválida: {str(e)}"
-                    }
+                        missing_fields = []
+                        if "action" not in result:
+                            missing_fields.append("action")
+                        if "confidence_score" not in result:
+                            missing_fields.append("confidence_score")
+                        if "extracted_data" not in result:
+                            missing_fields.append("extracted_data")
+                        logger.warning(f"[DEBUG] Campos obrigatórios faltando: {missing_fields}")
+                        raise ValueError(f"Resposta LLM não contém campos obrigatórios: {missing_fields}")
+                except Exception as e:
+                    logger.error(f"[DEBUG] Erro ao parsear resposta do LLM: {e}")
+                    logger.error(f"[DEBUG] Resposta bruta recebida: {response}")
+                    raise
             else:
-                return {
-                    "success": False,
-                    "error": "Erro desconhecido na API OpenAI"
-                }
+                logger.error(f"[DEBUG] Resposta do LLM não é string: {type(response)} - {response}")
+                raise ValueError("Resposta do LLM não é string")
         except Exception as e:
-            logger.error(f"Erro no LLM reasoning: {str(e)}")
+            logger.error(f"Erro no LLM reasoning otimizado: {str(e)}")
             return {
                 "success": False,
                 "error": str(e)
             }
 
-    def _detect_user_intent(self, message: str, context: Dict[str, Any]) -> str:
+    def _create_context_summary_for_llm(self, existing_data: Dict[str, Any], conversation_history: List[Dict[str, Any]]) -> str:
         """
-        Detecta intenção do usuário: confirmação, correção, reagendamento, cancelamento, dados_novos, pergunta_detalhes, negação.
-        """
-        msg = message.strip().lower()
-        # Confirmação
-        if re.match(r"^(sim|isso|correto|ok|perfeito|confirmado|está certo|isso mesmo)[.! ]*$", msg):
-            return "confirm"
-        # Cancelamento
-        if any(word in msg for word in ["cancelar", "cancela", "desmarcar", "desmarca", "quero cancelar", "preciso cancelar", "cancele", "cancela minha consulta"]):
-            return "cancel"
-        # Reagendamento
-        if any(word in msg for word in ["reagendar", "remarcar", "mudar horário", "alterar horário", "quero remarcar", "quero reagendar", "preciso remarcar", "preciso reagendar"]):
-            return "reschedule"
-        # Negação
-        if re.match(r"^(não|nao|negativo|errado|incorreto|nunca|jamais)[.! ]*$", msg):
-            return "deny"
-        # Correção explícita
-        if any(word in msg for word in ["na verdade", "corrigindo", "corrija", "corrigir", "desculpe, quis dizer", "não, o correto é", "o certo é"]):
-            return "correction"
-        # Pergunta de detalhes
-        if msg.endswith("?") or any(q in msg for q in ["qual", "quando", "como", "posso", "pode", "tem como", "seria possível"]):
-            return "pergunta_detalhes"
-        # Dados novos (heurística: contém número de telefone, data, horário, nome)
-        if re.search(r"\d{2}/\d{2}/\d{4}", msg) or re.search(r"\(\d{2}\) ?\d{4,5}-\d{4}", msg):
-            return "dados_novos"
-        if any(field in msg for field in ["meu nome é", "me chamo", "telefone", "data", "horário", "consulta"]):
-            return "dados_novos"
-        return "dados_novos"  # Default assume dados novos
-
-    def _should_skip_extraction(self, user_intent: str) -> bool:
-        """
-        Evita extração quando intenção é só confirmação ou negação.
-        """
-        return user_intent in ["confirm", "deny"]
-
-    def _create_context_summary_for_llm(self, existing_data: Dict[str, Any], conversation_history: List[Dict[str, Any]], user_intent: str = None) -> str:
-        """
-        Cria resumo do contexto para o LLM, incluindo progresso conversacional e intenção detectada.
+        Cria resumo do contexto para o LLM, incluindo progresso conversacional.
         """
         summary_parts = []
         if existing_data:
@@ -226,11 +203,8 @@ RESPONDA APENAS COM JSON válido no formato:
                 missing_summary += f"- {display_name}\n"
             summary_parts.append(missing_summary)
         # Progresso conversacional
-        progress = f"PROGRESSO: {len(existing_data)}/{len(required_fields)} campos coletados."
+        progress = f"PROGRESSO: {len([v for v in existing_data.values() if v])}/{len(required_fields)} campos coletados."
         summary_parts.append(progress)
-        # Intenção detectada
-        if user_intent:
-            summary_parts.append(f"INTENÇÃO DETECTADA: {user_intent}")
         return "\n".join(summary_parts) if summary_parts else "Nenhum dado coletado ainda."
     
     def _get_field_display_name(self, field: str) -> str:
