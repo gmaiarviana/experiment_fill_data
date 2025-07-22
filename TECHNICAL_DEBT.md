@@ -2,184 +2,145 @@
 
 ## 📋 Visão Geral
 
-Documento catalogando débito técnico pendente. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
+Documento catalogando débito técnico **pendente**. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
 
 ---
 
 ## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
 
+### **#1 - CONTEXT MANAGEMENT INCOMPLETO EM CONVERSAS SEQUENCIAIS**
+**🎯 Impacto**: Inconsistência entre old/new session patterns, contexto pode ser perdido
 
-### **#1 - CONTEXT MANAGEMENT QUEBRADO EM CONVERSAS SEQUENCIAIS**
-**🎯 Impacto**: Dados extraídos perdidos entre mensagens, persistence inconsistente, UX degradada
-
-**Problema**: Sistema não mantém contexto entre mensagens da mesma sessão
-```
-❌ TESTE FALHANDO:
-Mensagem 1: "Maria Santos" → Extrai nome, persistence OK
-Mensagem 2: "Telefone 81999887766" → Extrai telefone mas PERDE nome anterior
-Erro: "Nome do paciente é obrigatório" (mas tinha extraído "Maria Santos")
-```
-
-**Root Causes**:
+**Problema**: Coexistência de dois sistemas de session management
 ```python
-# src/api/main.py - Session context não sendo passado corretamente
-sessions[session_id]["extracted_data"] = {}  # ❌ Reset completo a cada mensagem
+# ❌ INCONSISTÊNCIA ARQUITETURAL:
+# src/api/main.py - Old session pattern ainda existe
+sessions[session_id]["extracted_data"] = {}
 
-# src/services/consultation_service.py - Validation pipeline inconsistente  
-consulta_data = {
-    "nome": normalized_data.get("name") or normalized_data.get("nome", ""),  # ❌ Perde contexto anterior
-}
+# ✅ vs ServiceContainer pattern (novo)  
+chat_service = get_chat_service()
+result = await chat_service.process_message(message, session_id)
 ```
 
 **Ação Necessária**:
-1. **Context Accumulation**: Mesclar dados novos com contexto existente em `main.py`
-2. **Persistence Context**: Passar contexto completo para `ConsultationService`
-3. **Session State Management**: Implementar state machine para conversas
+1. **Consolidar Session Management**: Remover padrão antigo de main.py
+2. **Padronizar Chat Router**: Usar ServiceContainer consistently  
+3. **Testes Multi-turn**: Validar accumulation em conversas longas
 
 **Benefícios**:
-- Conversas funcionais multi-turn
-- Persistence consistente 
-- UX natural para coleta de dados
+- Arquitetura consistente
+- Context management robusto e testável
+- Eliminação de duplicate logic
 
 ---
 
-### **#2 - REASONING INTELLIGENCE LIMITADO**
-**🎯 Impacto**: Sistema não entende correções, reagendamentos, ou context natural
+### **#2 - BUG DESCOBERTO: REASONING COORDINATOR ERROR**
+**🎯 Impacto**: ReasoningCoordinator falha com erro `'extracted_data'`
 
-**Problema**: LLM Strategist reconhece apenas "extract" e "ask", não operations complexas
-```
-❌ TESTES FALHANDO:
-"Na verdade, telefone correto é 85111222333" → action="ask", confidence=0.3 (não entende correção)
-"Preciso reagendar consulta" → action="ask" (trata como agendamento novo)
-"Como cancelo consulta?" → action="ask", confidence=0.3 (scope limitado)
+**Problema**: Testes revelaram bug crítico no core reasoning
+```bash
+❌ ERRO REAL ENCONTRADO:
+{"action": "error", "error": "'extracted_data'", "confidence": 0.0}
+# Descoberto via tests/core/test_reasoning_coordinator.py
 ```
 
-**Root Causes**:
-```python
-# src/core/reasoning/llm_strategist.py - Prompt limitado
-system_prompt = """- "extract": Extrair dados
-- "ask": Fazer pergunta
-# ❌ Falta: correction, reschedule, cancel, confirm
-```
+**Root Cause**: KeyError no processamento de extracted_data
 
 **Ação Necessária**:
-1. **Expand Action Types**: Adicionar correction, reschedule, cancel ao strategy
-2. **Context-Aware Prompts**: Melhorar prompts com awareness de conversações anteriores
-3. **Intent Detection**: Pre-processing para detectar intenções complexas
+1. **Debug ReasoningCoordinator**: Investigar e corrigir erro 'extracted_data'
+2. **Expand Error Handling**: Melhor tratamento de edge cases
+3. **Enhanced Intelligence**: Adicionar actions: correction, reschedule, cancel
+
+**Benefícios**:
+- Sistema de reasoning funcional
+- Conversas mais inteligentes
+- Error handling robusto
 
 ---
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
+### **#3 - PERFORMANCE PARCIALMENTE OTIMIZADA**
+**🎯 Impacto**: Algumas otimizações implementadas, mas gaps remainem
 
+**✅ PROGRESSO FEITO**:
+- Singleton patterns eliminaram instâncias duplicadas ✅
+- ServiceContainer com dependency injection ✅
+- Lazy loading implementado ✅
 
----
+**❌ GAPS RESTANTES**:
+- Falta async operations para LLM calls pesadas
+- Sem connection pooling para database
+- Sem cache para validation results
+- Performance benchmarks ausentes
 
-### **✅ #3 - OVERHEAD E COMPLEXIDADE DA SOLUÇÃO HÍBRIDA LLM + CÓDIGO - RESOLVIDO**
-**🎯 Impacto**: ~~Manutenção mais difícil, lógica duplicada, evolução lenta, fragmentação de responsabilidades~~ **RESOLVIDO**
-
-**✅ SOLUÇÃO IMPLEMENTADA**:
-- **Arquitetura de Serviços Especializada**: ChatService, ExtractionService, ValidationService
-- **Dependency Injection Centralizado**: ServiceContainer com lazy loading e singleton patterns
-- **Context Management**: SessionService integrado para continuidade entre mensagens
-- **Error Handling Robusto**: Fallbacks e tratamento de erros em toda a stack de serviços
-- **Testes Abrangentes**: 12 testes validando arquitetura, DI, error handling, integração
-
-**Resultado**: Arquitetura limpa, manutenível e testável ✅
-
-**Commits de Resolução**:
-- `c4ba6ae`: fix: resolve débito técnico #3 - melhorias na arquitetura de serviços
-- `d65d5a5`: test: adiciona testes comprehensive para service layer + fix ValidationService
-
-**Data de Resolução**: 2025-07-22
+**Ação Necessária**:
+1. **Async LLM Operations**: Implementar await patterns para reasoning
+2. **Database Connection Pooling**: Otimizar conexões DB
+3. **Validation Caching**: Cache results para dados repetitivos
+4. **Performance Benchmarks**: Medir e validar otimizações
 
 ---
 
-### **#4 - PERFORMANCE NÃO OTIMIZADA**
-**🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
+### **#4 - COBERTURA DE TESTES INSUFICIENTE**
+**🎯 Impacto**: Core modules críticos sem testes, bugs não detectados
 
-**Problemas de Performance**:
+**✅ PROGRESSO FEITO**:
+- Service layer: 12 testes abrangentes ✅ 
+- ReasoningCoordinator: basic coverage ✅
+- Validation system: comprehensive ✅
 
-#### Operações Síncronas Desnecessárias:
-```
-# Múltiplas chamadas LLM sequenciais
-# Validações redundantes executadas múltiplas vezes
-# Falta de cache para validações repetitivas
-```
-
-#### Instâncias Duplicadas:
-```
-# reasoning_engine.py cria:
-self.question_generator = QuestionGenerator()
-self.data_summarizer = DataSummarizer()
-self.conversation_manager = ConversationManager()
-
-# coordinator cria:
-self.llm_strategist = LLMStrategist()
-self.conversation_flow = ConversationFlow()  # Funcionalidade similar
-self.response_composer = ResponseComposer()  # Funcionalidade similar
+**❌ GAPS CRÍTICOS**:
+```python
+# SEM TESTES (0% coverage):
+src/core/entity_extraction.py     # CRÍTICO - core extraction
+src/core/openai_client.py         # CRÍTICO - main integration  
+src/services/consultation_service.py  # Unit tests missing
+src/services/extraction_service.py    # Unit tests missing
+src/services/session_service.py       # Unit tests missing
 ```
 
-#### Queries N+1 e Falta de Connection Pooling:
-```
-# Repository pattern sem otimizações
-# Conexões de banco não reutilizadas
-# Falta de batch operations
-```
-
-**Otimizações Recomendadas**:
-- Implementar cache de validações
-- Usar async operations onde possível
-- Connection pooling para banco
-- Singleton pattern para services pesados
-- Batch processing para operações LLM
+**Ação Necessária**:
+1. **test_entity_extraction.py**: Cobertura do core extraction engine
+2. **test_openai_client.py**: Mock-based testing da integração LLM
+3. **Individual service tests**: Unit tests para each service
+4. **API router tests**: Cobertura dos endpoints
 
 ---
+
+## 📚 **MÉDIO - Qualidade e Manutenibilidade**
 
 ### **#5 - DOCUMENTAÇÃO INSUFICIENTE**
-**🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
+**🎯 Impacto**: Onboarding lento, integração difícil
 
 **Lacunas Documentais**:
-- APIs não documentadas com OpenAPI
-- Arquitetura de reasoning não explicada
-- Falta exemplos de uso dos services
-- Guias de contribuição ausentes
-- Decisões arquiteturais não documentadas
+- OpenAPI specs para todos endpoints
+- Architecture decision records (ADRs)
+- Service integration patterns e examples
+- Developer setup e contribution guides
+- Error handling patterns documentation
 
-**Documentação Necessária**:
-```
-# API Documentation:
-# - OpenAPI specs para todos endpoints
-# - Exemplos de request/response
-# - Error codes e handling
-
-# Architecture Documentation:
-# - Diagramas de componentes
-# - Fluxo de dados
-# - Decisões técnicas e trade-offs
-
-# Developer Guides:
-# - Setup environment
-# - Debugging guide
-# - Contribution guidelines
-```
+**Ação Necessária**:
+1. **OpenAPI Documentation**: Auto-generate API specs
+2. **Architecture Docs**: Service patterns, DI, reasoning flow
+3. **Developer Guides**: Setup, debugging, testing patterns
+4. **Code Examples**: Integration patterns para new features
 
 ---
 
-## 📊 **MATRIZ DE PRIORIZAÇÃO**
+## 📊 **MATRIZ DE PRIORIZAÇÃO ATUALIZADA**
 
 ```
-IMPACTO vs COMPLEXIDADE (ATUALIZADO):
+IMPACTO vs COMPLEXIDADE:
 
-Alto Impacto    │                │ #1 Context     │
-                │                │ #2 Intelligence│
+Alto Impacto    │ #1 Context     │ #2 Bug Fix     │
+                │ #4 Test Gaps   │                │
                 │                │                │
                 ├────────────────┼────────────────│
-Médio Impacto   │ ✅ RESOLVIDO  │ #3 Estrutura   │
-                │ #3 Duplicadas │ #4 Performance │
+Médio Impacto   │ #5 Docs        │ #3 Performance │
                 │                │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #5 Docs        │                │
+Baixo Impacto   │                │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -190,52 +151,68 @@ Baixo Impacto   │ #5 Docs        │                │
 
 ### **🚨 FASE CRÍTICA - Resolver Primeiro**
 ```bash
-# #1 - Context Management
-# #2 - Reasoning Intelligence
+# #1 - Context Management consolidation
+# #2 - Fix ReasoningCoordinator bug
 ```
-**Objetivo**: Sistema funcional para conversas sequenciais
+**Objetivo**: Sistema estável e funcional
 
-### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
+### **⚡ FASE QUALIDADE - Testes e Robustez**  
 ```bash
-# ✅ #3 - Funcionalidades Duplicadas (RESOLVIDO)
+# #4 - Critical test coverage (entity_extraction, openai_client)
 ```
-**Objetivo**: Arquitetura limpa e confiável ✅ **CONCLUÍDO**
+**Objetivo**: Core modules testados e robustos
 
-### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
+### **🔧 FASE OTIMIZAÇÃO - Performance e UX**
 ```bash
-# #3 - Estrutura de Arquivos (renumerado)
-# #4 - Performance (renumerado)
-# #5 - Documentação (renumerado)
+# #3 - Performance optimizations  
+# #5 - Documentation completion
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
 ---
 
-## 🛠️ **INSTRUÇÕES PARA CURSOR/CLAUDE CODE**
+## 🛠️ **INSTRUÇÕES PARA EXECUÇÃO**
 
-### **Estratégia de Execução**:
-1. **Uma issue por vez** - Não misturar problemas diferentes
-2. **Testes após cada mudança** - Validar que sistema funciona
-3. **Commits específicos** - Facilitar rollback se necessário
-4. **Backup de arquivos críticos** - Antes de grandes mudanças
-
-### **Ordem de Segurança**:
-1. **Mais seguro**: #5 (baixo risco de quebrar)
-2. **Médio risco**: #3 (testar bem)
-3. **Alto risco**: #1, #2, #4 (mudanças estruturais grandes)
-
-### **Validação Necessária**:
+### **Validação Obrigatória Após Mudanças**:
 ```bash
-# Após cada mudança:
-docker-compose up --build -d
+# Health check
 curl http://localhost:8000/system/health
-docker-compose exec api python -m pytest tests/integration/test_user_journey_simple.py -v -s
-docker-compose exec api python -m pytest tests/test_unified_validation.py -v
-docker-compose exec api python -m pytest tests/test_health.py -v
+
+# Core tests
+docker exec api python -m pytest tests/core/ -v
+docker exec api python -m pytest tests/test_service_layer_td3.py -v
+
+# Integration tests  
+docker exec api python -m pytest tests/integration/test_user_journey_simple.py -v
 ```
+
+### **Commits Estruturados**:
+- **fix**: Para correção de bugs (#2)
+- **feat**: Para nova funcionalidade ou testes (#4, #5)
+- **refactor**: Para melhorias arquiteturais (#1, #3)
+- **docs**: Para documentação (#5)
+
+---
+
+## 📈 **PROGRESSO REALIZADO**
+
+### **✅ RESOLVIDOS COMPLETAMENTE**:
+- **Service Architecture**: Especialização + DI + singleton patterns
+- **Duplicate Code**: ~400+ lines obsoletas removidas
+- **Test Infrastructure**: Base sólida estabelecida
+
+### **🔄 EM PROGRESSO**:  
+- **Context Management**: Arquitetura nova implementada, falta consolidação
+- **Test Coverage**: ReasoningCoordinator iniciado, faltam core modules
+- **Performance**: Instancing resolvido, faltam async/cache optimizations
+
+### **📋 DESCOBERTAS VIA TESTES**:
+- **Bug real encontrado**: ReasoningCoordinator 'extracted_data' error
+- **Architecture quality**: Service layer bem estruturado
+- **Test value**: Testes revelam problemas reais
 
 ---
 
 *Documento atualizado em: 2025-07-22*  
-*Baseado em análise completa do código atual*  
-*Organizado para execução via Cursor/Claude Code*
+*Baseado em análise pós-refatoração e cleanup*  
+*Focus: Issues pendentes prioritizados por impacto*
