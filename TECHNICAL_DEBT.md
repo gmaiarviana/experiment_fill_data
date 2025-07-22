@@ -71,46 +71,11 @@ system_prompt = """- "extract": Extrair dados
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#3 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
-**🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
-**Problemas Estruturais**:
-
-#### **Responsabilidades Misturadas**:
-```python
-# src/api/main.py (404 linhas):
-# - Endpoints HTTP
-# - Lógica de negócio 
-# - Gerenciamento de sessão
-# - Validação de dados
-# - Tratamento de erros
-
-# src/core/entity_extraction.py (426 linhas):
-# - Extração de entidades
-# - Normalização de dados
-# - Validação temporal
-# - Context management
-```
-
-#### **Services Insuficientes**:
-```python
-# Atual: Apenas ConsultationService
-# Necessário:
-# - ChatService: Orquestra conversação
-# - ExtractionService: Gerencia extração
-# - ValidationService: Orquestra validação
-# - SessionService: Gerencia sessões
-```
-
-**Ação Necessária**:
-- Extrair lógica de negócio de `main.py` para services especializados
-- Quebrar `EntityExtractor` em responsabilidades menores
-- Criar services especializados para cada domínio
-- Implementar injeção de dependência consistente
 
 ---
 
-### **#4 - OVERHEAD E COMPLEXIDADE DA SOLUÇÃO HÍBRIDA LLM + CÓDIGO**
+### **#3 - OVERHEAD E COMPLEXIDADE DA SOLUÇÃO HÍBRIDA LLM + CÓDIGO**
 **🎯 Impacto**: Manutenção mais difícil, lógica duplicada, evolução lenta, fragmentação de responsabilidades
 
 **Problema**: O modelo híbrido atual (LLM para extração/conversação + código para validação/regras) gera:
@@ -139,7 +104,7 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#5 - PERFORMANCE NÃO OTIMIZADA**
+### **#4 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -180,7 +145,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-### **#6 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#5 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -217,13 +182,13 @@ IMPACTO vs COMPLEXIDADE (ATUALIZADO):
 
 Alto Impacto    │                │ #1 Context     │
                 │                │ #2 Intelligence│
-                │                │ #3 Arquitetura │
-                ├────────────────┼────────────────│
-Médio Impacto   │ ✅ RESOLVIDO  │ #4 Estrutura   │
-                │ #3 Duplicadas │ #5 Performance │
                 │                │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #6 Docs        │                │
+Médio Impacto   │ ✅ RESOLVIDO  │ #3 Estrutura   │
+                │ #3 Duplicadas │ #4 Performance │
+                │                │                │
+                ├────────────────┼────────────────│
+Baixo Impacto   │ #5 Docs        │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -242,15 +207,14 @@ Baixo Impacto   │ #6 Docs        │                │
 ### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
 ```bash
 # ✅ #3 - Funcionalidades Duplicadas (RESOLVIDO)
-# #3 - Arquitetura Fragmentada (renumerado)
 ```
-**Objetivo**: Arquitetura limpa e confiável
+**Objetivo**: Arquitetura limpa e confiável ✅ **CONCLUÍDO**
 
 ### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
 ```bash
-# #4 - Estrutura de Arquivos (renumerado)
-# #5 - Performance (renumerado)
-# #6 - Documentação (renumerado)
+# #3 - Estrutura de Arquivos (renumerado)
+# #4 - Performance (renumerado)
+# #5 - Documentação (renumerado)
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
@@ -265,9 +229,9 @@ Baixo Impacto   │ #6 Docs        │                │
 4. **Backup de arquivos críticos** - Antes de grandes mudanças
 
 ### **Ordem de Segurança**:
-1. **Mais seguro**: #7 (baixo risco de quebrar)
+1. **Mais seguro**: #5 (baixo risco de quebrar)
 2. **Médio risco**: #3 (testar bem)
-3. **Alto risco**: #1, #2, #4, #5, #6 (mudanças estruturais grandes)
+3. **Alto risco**: #1, #2, #4 (mudanças estruturais grandes)
 
 ### **Validação Necessária**:
 ```bash

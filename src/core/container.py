@@ -71,6 +71,22 @@ class ServiceContainer:
             self._services['consultation_service'] = ConsultationService(
                 entity_extractor=entity_extractor
             )
+        
+        if 'chat_service' not in self._services:
+            from src.services.chat_service import ChatService
+            self._services['chat_service'] = ChatService()
+        
+        if 'extraction_service' not in self._services:
+            from src.services.extraction_service import ExtractionService
+            # Inject shared EntityExtractor to avoid duplication
+            entity_extractor = self._services['entity_extractor']
+            self._services['extraction_service'] = ExtractionService(
+                entity_extractor=entity_extractor
+            )
+        
+        if 'validation_service' not in self._services:
+            from src.services.validation_service import ValidationService
+            self._services['validation_service'] = ValidationService()
     
     def get_service(self, service_name: str) -> Any:
         """
@@ -150,6 +166,24 @@ def get_consultation_service() -> ConsultationService:
     """Get the singleton ConsultationService instance."""
     container = ServiceContainer()
     return container.get_service('consultation_service')
+
+
+def get_chat_service():
+    """Get the singleton ChatService instance."""
+    container = ServiceContainer()
+    return container.get_service('chat_service')
+
+
+def get_extraction_service():
+    """Get the singleton ExtractionService instance."""
+    container = ServiceContainer()
+    return container.get_service('extraction_service')
+
+
+def get_validation_service():
+    """Get the singleton ValidationService instance."""
+    container = ServiceContainer()
+    return container.get_service('validation_service')
 
 
 # Global container instance for easy access
