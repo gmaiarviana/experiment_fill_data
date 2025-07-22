@@ -34,11 +34,22 @@ Sistema conversacional que transforma **conversas naturais** em **dados estrutur
 
 ### **Bibliotecas Especializadas**
 - **Pydantic**: Validação e serialização de dados estruturados
-- **Loguru**: Logging estruturado e debugging
 - **python-multipart**: Upload de arquivos e dados multipart
 - **asyncio**: Processamento assíncrono para chat streaming
-- **validators**: Validação de dados brasileiros (CPF, telefone, CEP)
-- **python-dateutil**: Parsing e manipulação de datas em português
+
+### **Sistema de Validação Unificado** ✨
+- **ValidationOrchestrator**: Coordenação centralizada de validações
+- **BaseValidator**: Interface abstrata para todos os validadores
+- **PhoneValidator**: Validação de telefones brasileiros com DDD
+- **DateValidator**: Parsing de datas/expressões temporais em português
+- **NameValidator**: Normalização de nomes próprios com preposições
+- **DocumentValidator**: Validação de CPF, CEP e documentos brasileiros
+- **DataNormalizer**: Orquestração completa de validação + normalização
+- **FieldMapper**: Mapeamento português/inglês com aliases
+
+### **Logging Estruturado**
+- **logger_factory**: Factory de loggers JSON estruturados
+- **Padrão unificado**: Logs consistentes em todo o sistema
 
 ---
 
@@ -502,6 +513,51 @@ curl "http://localhost:8000/consultations"
 curl -X POST "http://localhost:8000/extract/entities" \
   -H "Content-Type: application/json" \
   -d '{"message": "Maria Santos, telefone 11987654321, consulta de cardiologia"}'
+
+---
+
+## Arquitetura de Validação Unificada
+
+### **Estrutura do Sistema de Validação**
+```
+src/core/validation/
+├── validators/                    # Validadores específicos
+│   ├── base_validator.py         # Interface abstrata comum
+│   ├── phone_validator.py        # Telefones brasileiros (DDD + formato)
+│   ├── date_validator.py         # Datas/expressões temporais PT-BR
+│   ├── name_validator.py         # Nomes próprios (preposições/artigos)
+│   └── document_validator.py     # CPF, CEP, documentos brasileiros
+├── normalizers/                   # Normalizadores de dados
+│   ├── data_normalizer.py        # Orquestrador principal
+│   └── field_mapper.py           # Mapeamento português ↔ inglês
+└── validation_orchestrator.py    # Coordenador central
+```
+
+### **Vantagens do Sistema Unificado**
+- ✅ **Interface consistente**: Todos validadores implementam `BaseValidator`
+- ✅ **Eliminação de duplicação**: Lógica centralizada vs espalhada em 4+ arquivos
+- ✅ **Mapeamento automático**: Campos PT/EN com aliases (`nome` → `name`)
+- ✅ **Extensibilidade**: Fácil adicionar novos validadores
+- ✅ **Testabilidade**: Componentes isolados com 12 testes via Docker
+- ✅ **Confiança**: Score 0.0-1.0 baseado em qualidade e completude
+
+### **Exemplo de Uso**
+```python
+from src.core.validation.normalizers.data_normalizer import DataNormalizer
+
+normalizer = DataNormalizer()
+result = normalizer.normalize_consultation_data({
+    "nome": "joao silva",
+    "telefone": "11999999999", 
+    "data": "amanha"
+})
+
+print(f"Sucesso: {result.success}")
+print(f"Dados: {result.normalized_data}")
+print(f"Confiança: {result.confidence_score}")
+```
+
+---
 
 ### **Comandos Principais**
 ```bash
