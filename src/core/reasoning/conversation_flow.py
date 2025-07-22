@@ -263,8 +263,10 @@ class ConversationFlow:
         filled_fields = sum(1 for value in extracted_data.values() if value)
         total_fields = len(extracted_data)
         
-        # Gera resumo dos dados
-        data_summary = self._summarize_extracted_data(extracted_data)
+        # Gera resumo dos dados usando DataSummarizer
+        from src.core.data_summarizer import DataSummarizer
+        summarizer = DataSummarizer()
+        data_summary = summarizer.summarize_extracted_data(extracted_data)
         
         return {
             "session_id": context.get("session_id"),
@@ -297,34 +299,7 @@ class ConversationFlow:
         else:
             return f"{seconds}s"
     
-    def _summarize_extracted_data(self, data: Dict[str, Any]) -> str:
-        """
-        Cria resumo dos dados extraídos.
-        
-        Args:
-            data (Dict[str, Any]): Dados extraídos
-            
-        Returns:
-            str: Resumo formatado
-        """
-        if not data:
-            return "Nenhum dado coletado"
-        
-        summary_parts = []
-        field_names = {
-            "nome": "Nome",
-            "telefone": "Telefone", 
-            "data": "Data",
-            "horario": "Horário",
-            "tipo_consulta": "Tipo de Consulta"
-        }
-        
-        for field, value in data.items():
-            if value:
-                display_name = field_names.get(field, field.title())
-                summary_parts.append(f"{display_name}: {value}")
-        
-        return "; ".join(summary_parts) if summary_parts else "Nenhum dado válido" 
+ 
 
     def _anticipate_next_steps(self, context: Dict[str, Any], new_data: Optional[Dict[str, Any]] = None) -> List[str]:
         """
