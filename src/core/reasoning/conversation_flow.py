@@ -8,8 +8,8 @@ from datetime import datetime
 from src.core.logging.logger_factory import get_logger
 logger = get_logger(__name__)
 from src.core.entity_extraction import EntityExtractor
-from src.core.data_normalizer import normalize_consulta_data
-from src.core.validators import validate_consulta_data
+from src.core.validation.normalizers.data_normalizer import DataNormalizer
+from src.core.validation.validation_orchestrator import ValidationOrchestrator
 from src.core.question_generator import QuestionGenerator
 
 
@@ -23,8 +23,9 @@ class ConversationFlow:
         Inicializa o gerenciador de fluxo conversacional.
         """
         self.entity_extractor = EntityExtractor()
+        self.data_normalizer = DataNormalizer()
         self.question_generator = QuestionGenerator()
-        logger.info("ConversationFlow inicializado com EntityExtractor e QuestionGenerator")
+        logger.info("ConversationFlow inicializado com EntityExtractor, DataNormalizer e QuestionGenerator")
     
     def initialize_context(self) -> Dict[str, Any]:
         """

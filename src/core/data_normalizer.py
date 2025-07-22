@@ -1,3 +1,19 @@
+"""
+ARQUIVO DEPRECIADO - Technical Debt #1 RESOLVIDO
+
+Este arquivo foi substituído pelo novo sistema modular de normalização em:
+src/core/validation/normalizers/data_normalizer.py
+
+NOVO SISTEMA oferece:
+- Validação unificada via ValidationOrchestrator
+- Mapeamento de campos via FieldMapper  
+- Interface consistente via BaseValidator
+- Melhor testabilidade e extensibilidade
+
+MANTIDO TEMPORARIAMENTE para compatibilidade com módulos legados.
+TODO: Migrar módulos restantes e remover este arquivo.
+"""
+
 from typing import Dict, Any, Optional
 import logging
 from datetime import datetime

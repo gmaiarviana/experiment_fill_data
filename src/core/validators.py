@@ -1,3 +1,20 @@
+"""
+ARQUIVO DEPRECIADO - Technical Debt #1 RESOLVIDO
+
+Este arquivo foi substituído pelo novo sistema modular de validação em:
+src/core/validation/
+
+NOVO SISTEMA:
+- src/core/validation/validators/phone_validator.py
+- src/core/validation/validators/date_validator.py  
+- src/core/validation/validators/name_validator.py
+- src/core/validation/validators/document_validator.py
+- src/core/validation/normalizers/data_normalizer.py
+
+MANTIDO TEMPORARIAMENTE para compatibilidade com módulos legados.
+TODO: Migrar módulos restantes e remover este arquivo.
+"""
+
 from datetime import datetime, timedelta, date
 import re
 import time
