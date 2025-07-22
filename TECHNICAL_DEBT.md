@@ -4,10 +4,6 @@
 
 Documento completo catalogando débito técnico identificado em 2025. Organizado por **prioridade de impacto** para execução via Cursor ou Claude Code.
 
-**✅ RESOLVIDO**: 
-- #1 - IMPORTS OBSOLETOS E DEPENDÊNCIAS MORTAS (2025-01-21)
-- #2 - ARQUIVOS LEGADOS OBSOLETOS (2025-01-21)
-
 ---
 
 ## 🚨 **CRÍTICO - Quebra Funcionalidade ou Causa Confusão**
@@ -108,32 +104,10 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#4 - TIME EXTRACTION FALHA CONSISTENTEMENTE**
-**🎯 Impacto**: Dados incompletos, agendamentos sem horário
-
-**Problema**: Sistema extrai datas mas ignora horários consistentemente
-```
-❌ TESTES FALHANDO:
-"Ana Lima 11987654321 proxima terca 15:30" → extrai data mas não horário 15:30
-"dia 15/08/2025 as 10h" → extrai data mas não horário 10h
-```
-
-**Root Causes**:
-```python
-# src/core/entity_extraction.py - Schema incompleto para horários
-# ❌ Extração configurada mas não persistida
-```
-
-**Ação Necessária**:
-1. **Schema Update**: Verificar mapeamento horario → horário
-2. **Extraction Testing**: Validar function calling para horários
-3. **Normalization Pipeline**: Debuggar time processing
-
----
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#2 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
+### **#4 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**
 **🎯 Impacto**: Confusão sobre qual implementação usar, código duplicado, manutenção fragmentada
 
 **Duplicações Identificadas**:
@@ -172,7 +146,7 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#3 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
+### **#5 - ARQUITETURA DE SERVIÇOS FRAGMENTADA**
 **🎯 Impacto**: Lógica de negócio espalhada, difícil testar e manter
 
 **Problemas Estruturais**:
@@ -211,7 +185,7 @@ system_prompt = """- "extract": Extrair dados
 
 ---
 
-### **#4 - ESTRUTURA DE ARQUIVOS CONFUSA**
+### **#6 - ESTRUTURA DE ARQUIVOS CONFUSA**
 **🎯 Impacto**: Difícil encontrar código, merge conflicts, onboarding lento
 
 **Problemas de Organização**:
@@ -257,7 +231,7 @@ src/
 
 ## 🔶 **MÉDIO - Melhoria de Qualidade e Performance**
 
-### **#5 - TESTES INCONSISTENTES E INSUFICIENTES**
+### **#7 - TESTES INCONSISTENTES E INSUFICIENTES**
 **🎯 Impacto**: Bugs em produção, refatorações arriscadas, baixa confiabilidade
 
 **Problemas Identificados**:
@@ -299,7 +273,7 @@ tests/
 
 ---
 
-### **#6 - PERFORMANCE NÃO OTIMIZADA**
+### **#8 - PERFORMANCE NÃO OTIMIZADA**
 **🎯 Impacto**: Latência alta, uso excessivo de recursos, experiência degradada
 
 **Problemas de Performance**:
@@ -340,7 +314,7 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
-### **#7 - CONFIGURAÇÃO AINDA ESPALHADA**
+### **#9 - CONFIGURAÇÃO AINDA ESPALHADA**
 **🎯 Impacto**: Deploy arriscado, configuração inconsistente entre ambientes
 
 **Hardcoded Values Remanescentes**:
@@ -363,7 +337,7 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 
 ## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 
-### **#8 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#10 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, manutenção custosa, integração difícil
 
 **Lacunas Documentais**:
@@ -398,14 +372,15 @@ url = "http://localhost:8000/system/health"  # Deveria usar settings.BASE_URL
 ```
 IMPACTO vs COMPLEXIDADE:
 
-Alto Impacto    │ #1 Wrapper     │ #3 Arquitetura │
-                │                │ #4 Estrutura   │
-                │                │                │
+Alto Impacto    │ #1 Wrapper     │ #2 Context     │
+                │                │ #3 Intelligence│
+                │                │ #5 Arquitetura │
                 ├────────────────┼────────────────│
-Médio Impacto   │ #5 Testes      │ #6 Performance │
-                │ #7 Config      │                │
+Médio Impacto   │ #4 Duplicadas  │ #6 Estrutura   │
+                │ #7 Testes      │ #8 Performance │
+                │ #9 Config      │                │
                 ├────────────────┼────────────────│
-Baixo Impacto   │ #8 Docs        │                │
+Baixo Impacto   │ #10 Docs       │                │
                 │                │                │
    Baixa Complex.│               │ Alta Complex.  │
 ```
@@ -417,23 +392,25 @@ Baixo Impacto   │ #8 Docs        │                │
 ### **🚨 FASE CRÍTICA - Resolver Primeiro**
 ```bash
 # #1 - Reasoning Wrapper
+# #2 - Context Management
+# #3 - Reasoning Intelligence
 ```
 **Objetivo**: Sistema funcional e sem confusão sobre qual código usar
 
 ### **⚡ FASE ESTRUTURAL - Melhorias Significativas**
 ```bash
-# #2 - Funcionalidades Duplicadas
-# #3 - Arquitetura Fragmentada
-# #5 - Testes Inconsistentes
+# #4 - Funcionalidades Duplicadas
+# #5 - Arquitetura Fragmentada
+# #7 - Testes Inconsistentes
 ```
 **Objetivo**: Arquitetura limpa e confiável
 
 ### **🔧 FASE OTIMIZAÇÃO - Qualidade e Performance**
 ```bash
-# #4 - Estrutura de Arquivos
-# #6 - Performance
-# #7 - Configuração
-# #8 - Documentação
+# #6 - Estrutura de Arquivos
+# #8 - Performance
+# #9 - Configuração
+# #10 - Documentação
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
@@ -448,9 +425,9 @@ Baixo Impacto   │ #8 Docs        │                │
 4. **Backup de arquivos críticos** - Antes de grandes mudanças
 
 ### **Ordem de Segurança**:
-1. **Mais seguro**: #1, #8 (baixo risco de quebrar)
-2. **Médio risco**: #2, #5, #7 (testar bem)
-3. **Alto risco**: #3, #4, #6 (mudanças estruturais grandes)
+1. **Mais seguro**: #1, #10 (baixo risco de quebrar)
+2. **Médio risco**: #4, #7, #9 (testar bem)
+3. **Alto risco**: #2, #3, #5, #6, #8 (mudanças estruturais grandes)
 
 ### **Validação Necessária**:
 ```bash
@@ -463,6 +440,6 @@ docker-compose exec api python -m pytest tests/ -v
 ---
 
 *Documento criado em: 2025-01-21*  
-*Última atualização: 2025-01-21 - TD1 e TD2 resolvidos*  
+*Última atualização: 2025-07-22 - TD #4 TIME EXTRACTION resolvido*  
 *Baseado em análise completa do código atual*  
 *Organizado para execução via Cursor/Claude Code*
