@@ -8,12 +8,47 @@ e integrando com o novo sistema de validação modular.
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
+from src.core.logging.logger_factory import get_logger
 from ..validation_orchestrator import ValidationOrchestrator, ValidationSummary, ValidationMode
 from ..validators.phone_validator import PhoneValidator
 from ..validators.date_validator import DateValidator
 from ..validators.name_validator import NameValidator
 from ..validators.document_validator import DocumentValidator
+from ..validators.base_validator import BaseValidator, ValidationResult
 from .field_mapper import FieldMapper
+
+logger = get_logger(__name__)
+
+
+class PassThroughValidator(BaseValidator):
+    """Simple validator that accepts any value without validation."""
+    
+    def validate(self, value: Any, **kwargs) -> ValidationResult:
+        """Accept any non-empty value."""
+        if not value:
+            return ValidationResult(
+                is_valid=False,
+                value=None,
+                confidence=0.0,
+                errors=["Valor não pode ser vazio"],
+                warnings=[],
+                suggestions=[],
+                metadata={}
+            )
+        
+        return ValidationResult(
+            is_valid=True,
+            value=value,
+            confidence=0.8,  # Medium confidence since no validation
+            errors=[],
+            warnings=[],
+            suggestions=[],
+            metadata={}
+        )
+    
+    def normalize(self, value: Any) -> str:
+        """Return value as-is."""
+        return str(value) if value else ""
 
 
 @dataclass
@@ -96,6 +131,8 @@ class DataNormalizer:
             
             # Mapeia campos para nomenclatura padrão
             mapped_data = self.field_mapper.map_data(data)
+            logger.info(f"Data normalizer - Original data: {data}")
+            logger.info(f"Data normalizer - Mapped data: {mapped_data}")
             
             # Valida dados mapeados
             required_fields = self.field_mapper.get_required_fields()
@@ -120,6 +157,9 @@ class DataNormalizer:
             
             # Determina sucesso
             success = validation_summary.is_valid and len(field_mapping_info["missing_required"]) == 0
+            
+            # Log final normalized data
+            logger.info(f"Data normalizer - Final normalized data: {validation_summary.normalized_data}")
             
             return NormalizationResult(
                 success=success,
@@ -265,7 +305,7 @@ class DataNormalizer:
         self.orchestrator.register_validator("name", NameValidator(), confidence_weight=1.0)
         self.orchestrator.register_validator("phone", PhoneValidator(), confidence_weight=1.2)
         self.orchestrator.register_validator("consultation_date", DateValidator(), confidence_weight=1.1)
-        self.orchestrator.register_validator("consultation_time", DateValidator(), confidence_weight=0.8)
+        self.orchestrator.register_validator("consultation_time", PassThroughValidator(), confidence_weight=0.7)  # Use PassThrough validator for times
         self.orchestrator.register_validator("cpf", DocumentValidator("cpf"), confidence_weight=1.0)
         self.orchestrator.register_validator("postal_code", DocumentValidator("cep"), confidence_weight=0.7)
         

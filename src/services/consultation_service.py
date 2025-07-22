@@ -117,16 +117,27 @@ class ConsultationService:
             self.logger.info(f"Entity extraction successful. Confidence: {confidence_score}")
             self.logger.debug(f"Extracted data: {extracted_data}")
             
-            # Step 2: Normalize and validate data
+            # Step 2: Normalize and validate data (skip if already normalized)
             self.logger.debug("Step 2: Normalizing and validating data")
-            normalization_result = self.data_normalizer.normalize_consultation_data(extracted_data)
             
-            normalized_data = normalization_result.normalized_data
-            validation_errors = []
-            for field_result in normalization_result.validation_summary.field_results.values():
-                if field_result.errors:
-                    validation_errors.extend(field_result.errors)
-            normalized_confidence = normalization_result.confidence_score
+            # Check if data is already normalized (has English field names)
+            has_english_fields = any(field in extracted_data for field in ["name", "phone", "consultation_date", "consultation_time"])
+            
+            if has_english_fields:
+                # Data already normalized, use as-is
+                self.logger.info("Data already normalized, skipping re-normalization")
+                normalized_data = extracted_data
+                validation_errors = []
+                normalized_confidence = confidence_score
+            else:
+                # Normalize data
+                normalization_result = self.data_normalizer.normalize_consultation_data(extracted_data)
+                normalized_data = normalization_result.normalized_data
+                validation_errors = []
+                for field_result in normalization_result.validation_summary.field_results.values():
+                    if field_result.errors:
+                        validation_errors.extend(field_result.errors)
+                normalized_confidence = normalization_result.confidence_score
             
             # Use the higher confidence score between extraction and normalization
             final_confidence = max(confidence_score, normalized_confidence)
@@ -142,7 +153,7 @@ class ConsultationService:
             consulta_data = {
                 "nome": normalized_data.get("name") or normalized_data.get("nome", ""),
                 "telefone": normalized_data.get("phone") or normalized_data.get("telefone"),
-                "data": normalized_data.get("consulta_date") or normalized_data.get("data"),
+                "data": normalized_data.get("consultation_date") or normalized_data.get("consulta_date") or normalized_data.get("data"),  # Fix field mapping
                 "horario": normalized_data.get("horario"),
                 "tipo_consulta": normalized_data.get("tipo_consulta"),
                 "observacoes": normalized_data.get("observacoes"),

@@ -46,6 +46,91 @@ src/services/consultation_service.py:
 
 ---
 
+## 🔥 **CRÍTICO - Context Data Loss (Identificado 2025-07-22)**
+
+### **#2 - CONTEXT MANAGEMENT QUEBRADO EM CONVERSAS SEQUENCIAIS**
+**🎯 Impacto**: Dados extraídos perdidos entre mensagens, persistence inconsistente, UX degradada
+
+**Problema**: Sistema não mantém contexto entre mensagens da mesma sessão
+```
+❌ TESTE FALHANDO:
+Mensagem 1: "Maria Santos" → Extrai nome, persistence OK
+Mensagem 2: "Telefone 81999887766" → Extrai telefone mas PERDE nome anterior
+Erro: "Nome do paciente é obrigatório" (mas tinha extraído "Maria Santos")
+```
+
+**Root Causes**:
+```python
+# src/api/main.py - Session context não sendo passado corretamente
+sessions[session_id]["extracted_data"] = {}  # ❌ Reset completo a cada mensagem
+
+# src/services/consultation_service.py - Validation pipeline inconsistente  
+consulta_data = {
+    "nome": normalized_data.get("name") or normalized_data.get("nome", ""),  # ❌ Perde contexto anterior
+}
+```
+
+**Ação Necessária**:
+1. **Context Accumulation**: Mesclar dados novos com contexto existente em `main.py`
+2. **Persistence Context**: Passar contexto completo para `ConsultationService`
+3. **Session State Management**: Implementar state machine para conversas
+
+**Benefícios**:
+- Conversas funcionais multi-turn
+- Persistence consistente 
+- UX natural para coleta de dados
+
+---
+
+### **#3 - REASONING INTELLIGENCE LIMITADO**
+**🎯 Impacto**: Sistema não entende correções, reagendamentos, ou context natural
+
+**Problema**: LLM Strategist reconhece apenas "extract" e "ask", não operations complexas
+```
+❌ TESTES FALHANDO:
+"Na verdade, telefone correto é 85111222333" → action="ask", confidence=0.3 (não entende correção)
+"Preciso reagendar consulta" → action="ask" (trata como agendamento novo)
+"Como cancelo consulta?" → action="ask", confidence=0.3 (scope limitado)
+```
+
+**Root Causes**:
+```python
+# src/core/reasoning/llm_strategist.py - Prompt limitado
+system_prompt = """- "extract": Extrair dados
+- "ask": Fazer pergunta
+# ❌ Falta: correction, reschedule, cancel, confirm
+```
+
+**Ação Necessária**:
+1. **Expand Action Types**: Adicionar correction, reschedule, cancel ao strategy
+2. **Context-Aware Prompts**: Melhorar prompts com awareness de conversações anteriores
+3. **Intent Detection**: Pre-processing para detectar intenções complexas
+
+---
+
+### **#4 - TIME EXTRACTION FALHA CONSISTENTEMENTE**
+**🎯 Impacto**: Dados incompletos, agendamentos sem horário
+
+**Problema**: Sistema extrai datas mas ignora horários consistentemente
+```
+❌ TESTES FALHANDO:
+"Ana Lima 11987654321 proxima terca 15:30" → extrai data mas não horário 15:30
+"dia 15/08/2025 as 10h" → extrai data mas não horário 10h
+```
+
+**Root Causes**:
+```python
+# src/core/entity_extraction.py - Schema incompleto para horários
+# ❌ Extração configurada mas não persistida
+```
+
+**Ação Necessária**:
+1. **Schema Update**: Verificar mapeamento horario → horário
+2. **Extraction Testing**: Validar function calling para horários
+3. **Normalization Pipeline**: Debuggar time processing
+
+---
+
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
 ### **#2 - FUNCIONALIDADES DUPLICADAS/TRIPLICADAS**

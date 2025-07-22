@@ -93,6 +93,7 @@ class EntityExtractor:
                 
                 # Usa dados normalizados e confidence score do normalizador
                 result["extracted_data"] = normalization_result.normalized_data
+                logger.info(f"Entity extraction final result: {result['extracted_data']}")
                 result["confidence_score"] = self._calculate_improved_confidence(
                     normalization_result.normalized_data,
                     normalization_result.validation_summary.field_results,
@@ -219,20 +220,20 @@ class EntityExtractor:
         """
         confidence_factors = []
         
-        # Fator 1: Número de campos extraídos (0.0 - 0.35)
+        # Fator 1: Número de campos extraídos (0.0 - 0.40) - aumentado para melhor scoring
         extracted_count = len([v for v in extracted_data.values() if v and str(v).strip()])
         total_fields = 5  # nome, telefone, data, horario, tipo_consulta
         if extracted_count > 0:
             field_ratio = extracted_count / total_fields
-            confidence_factors.append(field_ratio * 0.35)
+            confidence_factors.append(field_ratio * 0.40)  # Aumentado de 0.35 para 0.40
         
-        # Fator 2: Qualidade dos dados (0.0 - 0.25)
+        # Fator 2: Qualidade dos dados (0.0 - 0.30) - menos penalização por erros menores
         if not validation_errors:
-            confidence_factors.append(0.25)
+            confidence_factors.append(0.30)
         else:
-            # Penaliza por erros de validação
-            error_penalty = min(0.25, len(validation_errors) * 0.1)
-            confidence_factors.append(max(0.0, 0.25 - error_penalty))
+            # Penalização reduzida para erros menores de validação
+            error_penalty = min(0.20, len(validation_errors) * 0.05)  # Reduzido de 0.1 para 0.05
+            confidence_factors.append(max(0.10, 0.30 - error_penalty))  # Base mínima de 0.10
         
         # Fator 3: Completude dos dados obrigatórios (0.0 - 0.2)
         required_fields = ["nome", "telefone", "data", "horario"]

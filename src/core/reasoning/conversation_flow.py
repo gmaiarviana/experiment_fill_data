@@ -74,10 +74,19 @@ class ConversationFlow:
             if extraction_result.get("success"):
                 extracted_data = extraction_result.get("extracted_data", {})
 
-                # Normaliza dados extraídos
+                # Normaliza dados extraídos (skip if already normalized)
                 if extracted_data:
-                    normalization_result = self.data_normalizer.normalize_consultation_data(extracted_data)
-                    normalized_data = normalization_result.normalized_data
+                    # Check if data is already normalized (has English field names)
+                    has_english_fields = any(field in extracted_data for field in ["name", "phone", "consultation_date", "consultation_time"])
+                    
+                    if has_english_fields:
+                        # Data already normalized by entity_extraction
+                        logger.info("Data already normalized by entity_extraction, using as-is")
+                        normalized_data = extracted_data
+                    else:
+                        # Data needs normalization
+                        normalization_result = self.data_normalizer.normalize_consultation_data(extracted_data)
+                        normalized_data = normalization_result.normalized_data
                     confidence = extraction_result.get("confidence", 0.0)
                     anticipated_next = self._anticipate_next_steps(context, normalized_data)
                     progression_pattern = self._detect_data_progression(context, normalized_data)

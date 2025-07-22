@@ -47,7 +47,7 @@ class LLMStrategist:
                 return {
                     "action": user_intent,
                     "reason": f"Intenção detectada: {user_intent}",
-                    "confidence": 0.95,
+                    "confidence": 0.90,  # Reduzido para permitir mais flexibilidade
                     "response": None,
                     "missing_fields": []
                 }
