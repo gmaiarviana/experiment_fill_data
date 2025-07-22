@@ -100,11 +100,133 @@ src/services/extraction_service.py    # Unit tests missing
 src/services/session_service.py       # Unit tests missing
 ```
 
-**Ação Necessária**:
-1. **test_entity_extraction.py**: Cobertura do core extraction engine
-2. **test_openai_client.py**: Mock-based testing da integração LLM
-3. **Individual service tests**: Unit tests para each service
-4. **API router tests**: Cobertura dos endpoints
+## 📋 **PLANO DETALHADO DE TESTES**
+
+### **🔴 PRIORIDADE CRÍTICA**
+
+#### **1. `tests/core/test_entity_extraction.py`**
+```python
+# Testes essenciais:
+- test_extract_consulta_entities_basic()
+- test_extract_with_context_accumulation()  
+- test_extract_complex_temporal_expressions()
+- test_extract_phone_normalization()
+- test_extract_with_malformed_input()
+- test_extract_confidence_scoring()
+- test_extract_schema_validation()
+```
+**Complexidade**: Alta (mock OpenAI, test data scenarios)  
+**Impacto**: CRÍTICO - Core do sistema sem coverage
+
+#### **2. `tests/core/test_openai_client.py`**
+```python
+# Testes essenciais:
+- test_chat_completion_basic()
+- test_full_llm_completion_with_context()
+- test_api_failure_handling()
+- test_rate_limiting_behavior()
+- test_response_parsing_edge_cases()
+- test_timeout_handling()
+```
+**Complexidade**: Média (mock responses, async patterns)  
+**Impacto**: CRÍTICO - Main integration point
+
+### **🟡 PRIORIDADE ALTA**
+
+#### **3. `tests/services/test_consultation_service.py`**
+```python
+# Testes essenciais:
+- test_process_and_persist_complete_data()
+- test_process_with_validation_errors()
+- test_process_with_context_merge()
+- test_persistence_failure_handling()
+- test_business_rules_validation()
+```
+
+#### **4. `tests/services/test_extraction_service.py`**
+```python
+# Testes essenciais:
+- test_extract_entities_with_enhancement()
+- test_extract_entities_batch()
+- test_validation_and_normalization_flow()
+- test_quality_metrics_calculation()
+- test_context_aware_extraction()
+```
+
+#### **5. `tests/services/test_session_service.py`**
+```python
+# Testes essenciais:
+- test_session_lifecycle()
+- test_session_data_persistence()
+- test_session_isolation()
+- test_session_cleanup()
+- test_concurrent_session_handling()
+```
+
+### **🟢 PRIORIDADE MÉDIA**
+
+#### **6. API Router Tests**
+```python
+# tests/api/test_routers.py
+- test_extract_endpoint_validation()
+- test_validate_endpoint_edge_cases()
+- test_consultations_crud_operations()
+- test_sessions_management_endpoints()
+```
+
+#### **7. Integration & Performance Tests**
+```python
+# tests/performance/test_benchmarks.py
+- test_response_time_benchmarks()
+- test_memory_usage_patterns()  
+- test_concurrent_load_handling()
+
+# tests/integration/test_multi_turn_conversations.py
+- test_context_accumulation_across_messages()
+- test_session_state_consistency()
+```
+
+## **🎯 Cronograma Sugerido**
+
+### **Semana 1: Core Critical**
+- `test_entity_extraction.py` (2-3 dias)
+- `test_openai_client.py` (1-2 dias)
+
+### **Semana 2: Services**  
+- `test_consultation_service.py` (1 dia)
+- `test_extraction_service.py` (1 dia)
+- `test_session_service.py` (1 dia)
+
+### **Semana 3: API & Integration**
+- API router tests (1-2 dias)
+- Multi-turn conversation tests (1-2 dias)
+
+## **🛠️ Ferramentas e Patterns**
+
+### **Mock Strategies**:
+```python
+# Para OpenAI Client:
+@patch('src.core.openai_client.OpenAI')
+async def test_with_mock_openai(mock_client):
+    mock_client.chat.completions.create.return_value = mock_response
+    # Test logic here
+```
+
+### **Test Data Fixtures**:
+```python
+# tests/fixtures/extraction_fixtures.py
+CONSULTATION_MESSAGES = [
+    "Maria Santos, telefone 81999887766, consulta sexta 14h",
+    "João Silva quer remarcar para terça às 15h30",
+    # ... more test cases
+]
+```
+
+### **Coverage Target**:
+- **Core modules**: 90%+ coverage
+- **Services**: 85%+ coverage  
+- **API routes**: 80%+ coverage
+- **Overall project**: 75%+ coverage
 
 ---
 
@@ -210,6 +332,59 @@ docker exec api python -m pytest tests/integration/test_user_journey_simple.py -
 - **Bug real encontrado**: ReasoningCoordinator 'extracted_data' error
 - **Architecture quality**: Service layer bem estruturado
 - **Test value**: Testes revelam problemas reais
+
+---
+
+## 📊 **TRACKING DE PROGRESSO DOS TESTES**
+
+### **🎯 Test Coverage Status**
+
+| Módulo | Coverage Atual | Target | Status | Prioridade |
+|--------|---------------|---------|--------|-----------|
+| `service_layer_td3.py` | ✅ 100% | 100% | **DONE** | ✅ |
+| `reasoning_coordinator.py` | 🟡 ~60% | 90% | **PARTIAL** | 🔴 |
+| `entity_extraction.py` | ❌ 0% | 90% | **TODO** | 🔴 |
+| `openai_client.py` | ❌ 0% | 85% | **TODO** | 🔴 |
+| `consultation_service.py` | ❌ 0% | 85% | **TODO** | 🟡 |
+| `extraction_service.py` | ❌ 0% | 85% | **TODO** | 🟡 |
+| `session_service.py` | ❌ 0% | 85% | **TODO** | 🟡 |
+| `api_routers.py` | 🟡 ~40% | 80% | **PARTIAL** | 🟢 |
+
+### **📈 Test Implementation Checklist**
+
+#### **Week 1 - Critical Core (🔴)**
+- [ ] **`test_entity_extraction.py`**
+  - [ ] Basic entity extraction  
+  - [ ] Context accumulation
+  - [ ] Temporal expressions
+  - [ ] Phone normalization
+  - [ ] Malformed input handling
+  - [ ] Confidence scoring
+  - [ ] Schema validation
+
+- [ ] **`test_openai_client.py`** 
+  - [ ] Chat completion basic
+  - [ ] Full LLM completion with context
+  - [ ] API failure handling
+  - [ ] Rate limiting behavior
+  - [ ] Response parsing edge cases
+  - [ ] Timeout handling
+
+#### **Week 2 - Service Layer (🟡)**  
+- [ ] **`test_consultation_service.py`**
+- [ ] **`test_extraction_service.py`**
+- [ ] **`test_session_service.py`**
+
+#### **Week 3 - Integration (🟢)**
+- [ ] **API router tests**
+- [ ] **Multi-turn conversation tests**
+- [ ] **Performance benchmarks**
+
+### **🎯 Success Metrics**
+- **Files with 0% coverage**: 5 → 0 
+- **Critical modules covered**: 0/2 → 2/2
+- **Overall project coverage**: ~45% → 75%+
+- **Bugs detected via tests**: 1 → 5+ (target)
 
 ---
 
