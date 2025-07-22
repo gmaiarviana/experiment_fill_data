@@ -34,33 +34,10 @@ result = await chat_service.process_message(message, session_id)
 
 ---
 
-### **#2 - BUG DESCOBERTO: REASONING COORDINATOR ERROR**
-**🎯 Impacto**: ReasoningCoordinator falha com erro `'extracted_data'`
-
-**Problema**: Testes revelaram bug crítico no core reasoning
-```bash
-❌ ERRO REAL ENCONTRADO:
-{"action": "error", "error": "'extracted_data'", "confidence": 0.0}
-# Descoberto via tests/core/test_reasoning_coordinator.py
-```
-
-**Root Cause**: KeyError no processamento de extracted_data
-
-**Ação Necessária**:
-1. **Debug ReasoningCoordinator**: Investigar e corrigir erro 'extracted_data'
-2. **Expand Error Handling**: Melhor tratamento de edge cases
-3. **Enhanced Intelligence**: Adicionar actions: correction, reschedule, cancel
-
-**Benefícios**:
-- Sistema de reasoning funcional
-- Conversas mais inteligentes
-- Error handling robusto
-
----
 
 ## ⚠️ **ALTO - Impacta Manutenibilidade e Performance**
 
-### **#3 - PERFORMANCE PARCIALMENTE OTIMIZADA**
+### **#2 - PERFORMANCE PARCIALMENTE OTIMIZADA**
 **🎯 Impacto**: Algumas otimizações implementadas, mas gaps remainem
 
 **✅ PROGRESSO FEITO**:
@@ -82,7 +59,7 @@ result = await chat_service.process_message(message, session_id)
 
 ---
 
-### **#4 - COBERTURA DE TESTES INSUFICIENTE**
+### **#3 - COBERTURA DE TESTES INSUFICIENTE**
 **🎯 Impacto**: Core modules críticos sem testes, bugs não detectados
 
 **✅ PROGRESSO FEITO**:
@@ -232,7 +209,7 @@ CONSULTATION_MESSAGES = [
 
 ## 📚 **MÉDIO - Qualidade e Manutenibilidade**
 
-### **#5 - DOCUMENTAÇÃO INSUFICIENTE**
+### **#4 - DOCUMENTAÇÃO INSUFICIENTE**
 **🎯 Impacto**: Onboarding lento, integração difícil
 
 **Lacunas Documentais**:
@@ -250,44 +227,25 @@ CONSULTATION_MESSAGES = [
 
 ---
 
-## 📊 **MATRIZ DE PRIORIZAÇÃO ATUALIZADA**
-
-```
-IMPACTO vs COMPLEXIDADE:
-
-Alto Impacto    │ #1 Context     │ #2 Bug Fix     │
-                │ #4 Test Gaps   │                │
-                │                │                │
-                ├────────────────┼────────────────│
-Médio Impacto   │ #5 Docs        │ #3 Performance │
-                │                │                │
-                ├────────────────┼────────────────│
-Baixo Impacto   │                │                │
-                │                │                │
-   Baixa Complex.│               │ Alta Complex.  │
-```
-
----
 
 ## 🎯 **PLANO DE EXECUÇÃO RECOMENDADO**
 
 ### **🚨 FASE CRÍTICA - Resolver Primeiro**
 ```bash
 # #1 - Context Management consolidation
-# #2 - Fix ReasoningCoordinator bug
 ```
 **Objetivo**: Sistema estável e funcional
 
 ### **⚡ FASE QUALIDADE - Testes e Robustez**  
 ```bash
-# #4 - Critical test coverage (entity_extraction, openai_client)
+# #3 - Critical test coverage (entity_extraction, openai_client)
 ```
 **Objetivo**: Core modules testados e robustos
 
 ### **🔧 FASE OTIMIZAÇÃO - Performance e UX**
 ```bash
-# #3 - Performance optimizations  
-# #5 - Documentation completion
+# #2 - Performance optimizations  
+# #4 - Documentation completion
 ```
 **Objetivo**: Sistema otimizado e bem documentado
 
@@ -309,10 +267,9 @@ docker exec api python -m pytest tests/integration/test_user_journey_simple.py -
 ```
 
 ### **Commits Estruturados**:
-- **fix**: Para correção de bugs (#2)
-- **feat**: Para nova funcionalidade ou testes (#4, #5)
-- **refactor**: Para melhorias arquiteturais (#1, #3)
-- **docs**: Para documentação (#5)
+- **feat**: Para nova funcionalidade ou testes (#3, #4)
+- **refactor**: Para melhorias arquiteturais (#1, #2)
+- **docs**: Para documentação (#4)
 
 ---
 

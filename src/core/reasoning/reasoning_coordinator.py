@@ -72,6 +72,16 @@ class ReasoningCoordinator:
             context (Dict[str, Any]): Contexto da sessão
             llm_result (Dict[str, Any]): Resultado do LLM
         """
+        # Garante que o contexto tem a estrutura necessária
+        if "extracted_data" not in context:
+            context["extracted_data"] = {}
+        if "conversation_history" not in context:
+            context["conversation_history"] = []
+        if "total_confidence" not in context:
+            context["total_confidence"] = 0.0
+        if "confidence_count" not in context:
+            context["confidence_count"] = 0
+        
         # Atualiza dados extraídos se houver
         extracted_data = llm_result.get("extracted_data", {})
         if extracted_data:
