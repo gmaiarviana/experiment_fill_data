@@ -287,8 +287,8 @@ class EntityExtractor:
         field_mapping = {
             "name": "nome",
             "phone": "telefone",
-            "consulta_date": "data",
-            "horario": "horario",
+            "consultation_date": "data",
+            "consultation_time": "horario",
             "tipo_consulta": "tipo_consulta"
         }
         
@@ -343,8 +343,9 @@ class EntityExtractor:
         time_patterns = [
             r'\b(de|pela)\s+(manhã|manha|tarde|noite)\b',
             r'\b(manhã|manha|tarde|noite)\b',
-            r'\b(\d{1,2})h?\b',
             r'\b(\d{1,2}):(\d{2})\b',
+            r'\b(\d{1,2})h(\d{2})\b',
+            r'\b(\d{1,2})h\b',
             r'\b(meio-dia|meio dia|meia-noite|meia noite)\b'
         ]
         
