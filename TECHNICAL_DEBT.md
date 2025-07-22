@@ -197,6 +197,22 @@ self.response_composer = ResponseComposer()  # Funcionalidade similar
 
 ---
 
+### **#4 - COBERTURA DE TESTES UNITÁRIOS PARA ROUTERS/ENDPOINTS (NOVO)
+**🎯 Impacto**: Refatoração estrutural facilita granularidade de testes, mas cobertura unitária por router ainda é limitada
+
+**Problema**: Testes de integração cobrem fluxos principais, mas não há testes unitários dedicados para cada router/endpoint
+
+**Ação Recomendada**:
+- Adicionar testes unitários FastAPI/TestClient para cada router
+- Cobrir casos de erro, edge cases e respostas HTTP específicas
+- Garantir que mudanças em um router não afetem outros
+
+**Benefícios**:
+- Detecção precoce de regressões
+- Feedback rápido para refatorações
+- Base para TDD incremental
+
+---
 
 ## 🔵 **BAIXO - Melhoria de Experiência do Desenvolvedor**
 

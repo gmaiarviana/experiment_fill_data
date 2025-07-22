@@ -237,14 +237,17 @@ Act:      "Pergunta: Que tipo de consulta e qual horário?"
 ```
 src/
 ├── api/                       # FastAPI endpoints
-│   ├── main.py               # Aplicação principal
-│   ├── routers/              # Rotas organizadas
-│   │   ├── chat.py           # POST /chat/message + SSE
-│   │   ├── data.py           # CRUD de registros estruturados
-│   │   └── system.py         # Health checks, metrics
-│   └── schemas/              # Modelos Pydantic
-│       ├── chat.py           # ChatMessage, ChatResponse
-│       └── consulta.py       # Consulta, ConsultaCreate
+│   ├── main.py                # Aplicação principal
+│   ├── routers/               # Rotas organizadas por domínio
+│   │   ├── chat.py            # POST /chat/message
+│   │   ├── extract.py         # POST /extract/entities
+│   │   ├── validate.py        # POST /validate
+│   │   ├── sessions.py        # GET/DELETE /sessions, /sessions/{session_id}
+│   │   ├── consultations.py   # GET /consultations, /consultations/{id}
+│   │   └── system.py          # Health checks, metrics
+│   └── schemas/               # Modelos Pydantic
+│       ├── chat.py            # ChatRequest, ChatResponse, etc.
+│       └── consulta.py        # Consulta, ConsultaCreate
 ├── chat/                      # Sistema conversacional
 │   ├── chat_client.py        # Cliente OpenAI + function calling
 │   ├── context_manager.py    # Gerenciamento de contexto/memória
@@ -592,37 +595,37 @@ docker-compose exec api python -m pytest tests/test_health.py -v
 ## APIs Principais
 
 ### **Chat Conversacional**
-- `POST /chat/message` - Enviar mensagem + receber resposta estruturada com extração automática
+- `POST /chat/message` - Enviar mensagem + receber resposta estruturada
+
+### Sessões
 - `GET /sessions/{session_id}` - Recuperar contexto de sessão
 - `DELETE /sessions/{session_id}` - Limpar sessão
 - `GET /sessions` - Listar todas as sessões ativas
 
-### **Dados Estruturados**
+### Dados Estruturados
 - `GET /consultations` - Listar consultas criadas
 - `GET /consultations/{id}` - Detalhes de consulta específica
 - `POST /extract/entities` - Extrair entidades de texto natural
 - `POST /validate` - Validar dados estruturados antes da persistência
 
-### **Sistema e Debug**
-- `GET /system/health` - Status de PostgreSQL e FastAPI com verificação em paralelo
-- `GET /system/metrics` - Métricas de uso e performance (planejado)
-- `GET /debug/extractions` - Log de extrações para análise (planejado)
+### Sistema e Debug
+- `GET /system/health` - Status de PostgreSQL e FastAPI
 
-### **Configuração e Ambiente**
+### Configuração e Ambiente
 - **Sistema centralizado**: Configuração via `src/core/config.py` com validação
 - **Variáveis obrigatórias**: `DATABASE_URL`, `OPENAI_API_KEY` com validação automática
 - **Configurações opcionais**: `LOG_LEVEL`, `DEBUG`, `HOST`, `PORT` com defaults
 - **Container compatibility**: Host 0.0.0.0 e environment variables acessíveis
 - **Arquivo .env.example**: Template completo com todas as variáveis necessárias
 
-### **Logging e Monitoramento**
+### Logging e Monitoramento
 - **Logs estruturados JSON**: Configurados via Loguru com `serialize=True`
 - **Níveis configuráveis**: Via environment variable `LOG_LEVEL` (default: INFO)
 - **Chat tracking**: Cada mensagem logada com timestamp e detalhes
 - **Visualização**: `docker logs api --tail N` para logs recentes
 - **Health monitoring**: Endpoint `/system/health` verifica todos os serviços
 
-### **Testes Automatizados** ✨
+### Testes Automatizados ✨
 - **Integration Tests**: 8 cenários de jornada do usuário completa (test_user_journey_simple.py)
 - **Validation Tests**: 12 testes de validação unificada para dados brasileiros (test_unified_validation.py)  
 - **Health Tests**: Monitoramento de saúde do sistema (test_health.py)
